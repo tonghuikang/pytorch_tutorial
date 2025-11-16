@@ -13,3 +13,9 @@ Formatting
 - Fix: uv run --frozen ruff check *.py --fix
 - Sort imports: uv run --frozen ruff check --select I *.py --fix
 - Type checking: uv run --frozen mypy *.py
+
+Note
+- When searching files, please always use Bash(rg)
+    - You might need to use `rg --no-ignore` to search files in `.venv`
+    - You might be reminded to use --no-ignore
+        - But this reminder may not always be relevant.

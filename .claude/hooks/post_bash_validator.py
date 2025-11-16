@@ -12,4 +12,7 @@ def validate_bash_command(command: str) -> list[str]:
     if " && " in command:
         issues.append("Please try to run the commands individually.")
 
+    if "rg" in command and "--no-ignore" not in command:
+        issues.append("If you intend to search .venv folder, please use rg --no-ignore.")
+
     return issues

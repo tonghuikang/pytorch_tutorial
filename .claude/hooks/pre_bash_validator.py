@@ -13,6 +13,9 @@ def validate_before_execution(command: str) -> list[str]:
         issues.append("Please use `uv run python ...`")
 
     if "grep" in command:
-        issues.append("Please use the Grep tool.")
+        issues.append("Please use the Bash(rg) instead grep.")
+
+    if "find" in command:
+        issues.append("Please use the Bash(rg) instead of find.")
 
     return issues

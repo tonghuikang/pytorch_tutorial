@@ -11,7 +11,6 @@
             "mcp__puppeteer__puppeteer_select",
             "mcp__puppeteer__puppeteer_hover",
             "WebFetch",
-            "Bash(find:*)",
             "Bash(grep:*)",
             "Bash(rg:*)",
             "Bash(ls:*)",
@@ -19,7 +18,10 @@
             "Bash(lsof:*)",
             "Bash(curl:*)"
         ],
-        "deny": []
+        "deny": [
+            "Grep",
+            "Bash(find:*)"
+        ]
     },
     "enableAllProjectMcpServers": true,
     "enabledMcpjsonServers": ["puppeteer"],
