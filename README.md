@@ -4,7 +4,7 @@ A tutorial project exploring PyTorch's internal architecture and automatic diffe
 
 ## Documentation
 
-This repository contains detailed analyses of PyTorch's autograd system:
+This repository contains detailed analyses of PyTorch's internal architecture:
 
 - **[docs/backward.md](docs/backward.md)** - Comprehensive analysis of how PyTorch's `backward()` method works
   - Dynamic computational graph traversal
@@ -17,6 +17,20 @@ This repository contains detailed analyses of PyTorch's autograd system:
   - Computational graph construction
   - Backward node creation
   - Hooks system
+
+- **[docs/compile.md](docs/compile.md)** - Comprehensive analysis of how PyTorch's `torch.compile()` works
+  - TorchDynamo graph capture system
+  - Bytecode analysis and symbolic execution
+  - TorchInductor backend and optimization
+  - Guards system and recompilation
+  - Dynamic shapes handling
+
+- **[docs/optimizer.md](docs/optimizer.md)** - Comprehensive analysis of how PyTorch's `optimizer.step()` works
+  - Optimizer base class architecture
+  - Adam/AdamW algorithm implementation
+  - State management and parameter groups
+  - Foreach and fused execution modes
+  - Learning rate schedulers
 
 ## Sample Code
 
