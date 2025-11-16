@@ -22,7 +22,7 @@ You will
     - For each item in the todo list
     - Reason whether you have addressed the requirement
 
-If you have made edits, you will ALSO
+If you have made edits on code files, you will ALSO
 
 1) Run tests
     - Search for appropriate tests,
@@ -30,6 +30,10 @@ If you have made edits, you will ALSO
     - Run the test.
 2) Run the formatter
     - See CLAUDE.md for instructions
+
+If you have made edits on markdown files, you will ALSO
+
+1) Proofread the markdown file for correctness
 """
 
 BASH_AFTER_EDIT_REMINDER = "It seems that you did not run bash after your last edit."

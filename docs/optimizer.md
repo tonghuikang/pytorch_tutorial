@@ -360,42 +360,31 @@ def _single_tensor_adam(params, grads, exp_avgs, exp_avg_sqs, state_steps,
 
 ### 6.2 Foreach Implementation
 
-Uses vectorized operations across all parameters:
+Uses vectorized `torch._foreach_*` operations to process all parameters simultaneously:
 
 ```python
 def _foreach_adam(params, grads, exp_avgs, exp_avg_sqs, state_steps, ...):
     # Increment all steps at once
     torch._foreach_add_(state_steps, 1)
 
-    # Update all first moments
+    # Update all first moments: m_t = β₁·m_{t-1} + (1-β₁)·g_t
     torch._foreach_mul_(exp_avgs, beta1)
     torch._foreach_add_(exp_avgs, grads, alpha=1 - beta1)
 
-    # Update all second moments
+    # Update all second moments: v_t = β₂·v_{t-1} + (1-β₂)·g_t²
     torch._foreach_mul_(exp_avg_sqs, beta2)
     torch._foreach_addcmul_(exp_avg_sqs, grads, grads, value=1 - beta2)
 
-    # Bias corrections
-    bias_correction1 = [1 - beta1 ** step for step in state_steps]
-    bias_correction2 = [1 - beta2 ** step for step in state_steps]
-
-    # Compute denominators
-    denoms = torch._foreach_sqrt(exp_avg_sqs)
-    torch._foreach_div_(denoms, bias_correction2_sqrt)
-    torch._foreach_add_(denoms, eps)
-
-    # Weight decay
-    torch._foreach_mul_(params, 1 - lr * weight_decay)
-
-    # Update parameters
-    step_sizes = [lr / bc1 for bc1 in bias_correction1]
-    torch._foreach_addcdiv_(params, exp_avgs, denoms, step_sizes, negate=True)
+    # Compute denominators and update parameters
+    # (bias correction, weight decay, parameter update)
+    ...
 ```
 
 **Benefits**:
 - Single kernel launch for all operations
 - Better GPU utilization
 - 2-5x faster than single-tensor mode
+- Automatically selected when `foreach=None` (default), multiple parameters exist, and no sparse gradients
 
 ## 7. Parameter Groups
 
@@ -425,21 +414,15 @@ def step(self, closure=None):
 
 ## 8. Execution Flow Example
 
-From `sample.py`:
+Let's trace through a complete execution of `optimizer.step()` for a simple model from `sample.py`.
 
-```python
-optimizer = AdamW(model.parameters(), lr=learning_rate)
+The model has 4 parameters:
+- fc1.weight [3072, 128]
+- fc1.bias [128]
+- fc2.weight [128, 10]
+- fc2.bias [10]
 
-# Training loop
-for inputs, labels in train_loader:
-    optimizer.zero_grad()
-    predictions = model(inputs)
-    loss = F.cross_entropy(predictions, labels)
-    loss.backward()
-    optimizer.step()  # ← Trace this
-```
-
-**Step-by-step execution**:
+After `loss.backward()` computes gradients, here's what happens when we call `optimizer.step()`:
 
 ### Step 1: Call `optimizer.step()`
 
@@ -459,37 +442,32 @@ self._cuda_graph_capture_health_check()
 
 ```python
 for group in self.param_groups:
-    # model has 1 param group with 4 parameters:
-    # - fc1.weight [3072, 128]
-    # - fc1.bias [128]
-    # - fc2.weight [128, 10]
-    # - fc2.bias [10]
+    # Our model has 1 param group with the 4 parameters listed above
 ```
 
 ### Step 4: Initialize state
 
+The `_init_group` method initializes state for all parameters:
+
 ```python
-params_with_grad = []  # Will contain 4 parameters
-grads = []             # Will contain 4 gradients
-exp_avgs = []          # Will contain 4 first moment tensors
-exp_avg_sqs = []       # Will contain 4 second moment tensors
-state_steps = []       # Will contain 4 step counters
+params_with_grad = []
+grads = []
+exp_avgs = []
+exp_avg_sqs = []
+state_steps = []
 
-has_complex = self._init_group(group, ...)
-
-# For each parameter:
 for p in [fc1.weight, fc1.bias, fc2.weight, fc2.bias]:
     if p.grad is None:
-        continue  # Skip if no gradient
+        continue
 
     params_with_grad.append(p)
     grads.append(p.grad)
 
     state = self.state[p]
-    if len(state) == 0:  # First step: initialize
+    if len(state) == 0:  # Lazy initialization on first step
         state["step"] = torch.tensor(0.0)
-        state["exp_avg"] = torch.zeros_like(p)
-        state["exp_avg_sq"] = torch.zeros_like(p)
+        state["exp_avg"] = torch.zeros_like(p)  # m_t
+        state["exp_avg_sq"] = torch.zeros_like(p)  # v_t
 
     exp_avgs.append(state["exp_avg"])
     exp_avg_sqs.append(state["exp_avg_sq"])
@@ -523,10 +501,11 @@ adam(
 
 ### Step 6: Foreach execution
 
+The functional implementation applies the AdamW update rule for all parameters:
+
 ```python
 # Increment all step counters
-torch._foreach_add_(state_steps, 1)
-# Now: step = 1.0 (or higher for later iterations)
+torch._foreach_add_(state_steps, 1)  # step = 1.0
 
 # Update first moments: m_t = β₁·m_{t-1} + (1-β₁)·g_t
 torch._foreach_mul_(exp_avgs, 0.9)
@@ -536,27 +515,21 @@ torch._foreach_add_(exp_avgs, grads, alpha=0.1)
 torch._foreach_mul_(exp_avg_sqs, 0.999)
 torch._foreach_addcmul_(exp_avg_sqs, grads, grads, value=0.001)
 
-# Bias corrections
-bias_correction1 = 1 - 0.9^step
-bias_correction2 = 1 - 0.999^step
+# Compute bias corrections
+bias_correction1 = 1 - 0.9 ** step
+bias_correction2 = 1 - 0.999 ** step
 
-# Compute denominators: √v̂_t + ε
+# Compute denominators: √(v̂_t) + ε
 denoms = torch._foreach_sqrt(exp_avg_sqs)
 torch._foreach_div_(denoms, sqrt(bias_correction2))
 torch._foreach_add_(denoms, 1e-08)
 
 # Apply weight decay (AdamW): θ = θ·(1 - lr·λ)
-torch._foreach_mul_(params_with_grad, 1 - 0.001 * 0.01)
-# params *= 0.99999
+torch._foreach_mul_(params_with_grad, 0.99999)
 
-# Update parameters: θ = θ - lr·m̂_t / (√v̂_t + ε)
+# Update parameters: θ = θ - (lr/bias_corr1)·m_t / denom
 step_size = 0.001 / bias_correction1
-torch._foreach_addcdiv_(
-    params_with_grad,  # θ
-    exp_avgs,          # m̂_t
-    denoms,            # √v̂_t + ε
-    value=-step_size
-)
+torch._foreach_addcdiv_(params_with_grad, exp_avgs, denoms, -step_size)
 ```
 
 ### Step 7: Parameters updated
@@ -619,21 +592,19 @@ optimizer = torch.optim.SGD(
 
 **Location**: `.venv/lib/python3.11/site-packages/torch/optim/_multi_tensor/`
 
-Fused optimizers use single CUDA kernels for entire update:
+Fused optimizers combine all update operations into a single CUDA kernel:
 
 ```python
 optimizer = AdamW(model.parameters(), lr=0.001, fused=True)
 ```
 
-**Benefits**:
-- 10-30% faster on GPU
-- Reduced kernel launch overhead
-- Better memory coalescing
+**Benefits**: 10-30% faster on GPU than foreach mode, minimal kernel launch overhead
+**Requirements**: CUDA tensors only, no sparse gradients, no complex numbers
 
-**Requirements**:
-- CUDA tensors only
-- No sparse gradients
-- No complex numbers
+**Performance comparison** (AdamW, 1000 parameters):
+- Single-tensor: 10.0ms (1.0x baseline)
+- Foreach: 3.5ms (2.9x faster)
+- Fused (CUDA): 2.0ms (5.0x faster)
 
 ### 10.2 Capturable (for CUDA Graphs)
 
@@ -696,25 +667,9 @@ for epoch in range(100):
 - `ReduceLROnPlateau`: Reduce LR when metric plateaus
 - `OneCycleLR`: One cycle learning rate policy
 
-## 11. Performance Comparison
+## 11. Zero Gradient (optimizer.zero_grad())
 
-**Foreach vs Single-tensor** (AdamW, 1000 parameters):
-
-| Mode | Time | Speedup |
-|------|------|---------|
-| Single-tensor | 10.0ms | 1.0x |
-| Foreach | 3.5ms | 2.9x |
-| Fused (CUDA) | 2.0ms | 5.0x |
-
-**foreach** is automatically selected when:
-- `foreach=None` (default)
-- Multiple parameters exist
-- No sparse gradients
-- Not capturable mode
-
-## 12. Zero Gradient (optimizer.zero_grad())
-
-### 12.1 Why Zero Gradients?
+### 11.1 Why Zero Gradients?
 
 **The Problem**: PyTorch **accumulates** gradients by default.
 
@@ -738,9 +693,9 @@ for i in range(3):
 
 **But**: For standard training, we want **fresh gradients** each iteration.
 
-### 12.2 When to Call zero_grad()
+### 11.2 When to Call zero_grad()
 
-**Standard pattern**: Before computing gradients for a new batch
+**Standard pattern**: Before computing gradients for a new batch.
 
 ```python
 for inputs, labels in dataloader:
@@ -754,15 +709,15 @@ for inputs, labels in dataloader:
 **Timing matters**:
 
 ```python
-# ✅ CORRECT: Zero before backward
+# ✅ CORRECT: Zero before backward (traditional pattern)
 optimizer.zero_grad()
 loss.backward()
 optimizer.step()
 
-# ❌ WRONG: Zero after step (wastes computation)
+# ✅ ALSO CORRECT: Zero after step (modern pattern)
 loss.backward()
 optimizer.step()
-optimizer.zero_grad()  # Too late! Gradients already used
+optimizer.zero_grad()  # Clears gradients for NEXT iteration
 
 # ❌ WRONG: Zero after backward (wastes backward computation)
 loss.backward()
@@ -770,7 +725,13 @@ optimizer.zero_grad()  # Throws away the gradients we just computed!
 optimizer.step()       # step() will fail (no gradients)
 ```
 
-### 12.3 Implementation
+**Both patterns 1 and 2 are correct!** Pattern 2 (zero after step) is actually preferred in modern PyTorch because:
+- It's clearer that `zero_grad()` prepares for the NEXT iteration
+- Works better with gradient accumulation patterns
+- `step()` reads the gradients and updates parameters; it doesn't clear them
+- `zero_grad()` is then called to clear the already-used gradients
+
+### 11.3 Implementation
 
 **Location**: `.venv/lib/python3.11/site-packages/torch/optim/optimizer.py:~972`
 
@@ -811,7 +772,7 @@ def zero_grad(self, set_to_none: bool = True) -> None:
                         p.grad.zero_()
 ```
 
-### 12.4 set_to_none=True vs False
+### 11.4 set_to_none=True vs False
 
 **Two modes**:
 
@@ -832,9 +793,9 @@ def zero_grad(self, set_to_none: bool = True) -> None:
 | Aspect | set_to_none=True | set_to_none=False |
 |--------|------------------|-------------------|
 | **Speed** | Faster (no memory write) | Slower (writes zeros) |
-| **Memory** | Less (frees gradient tensor) | More (keeps tensor allocated) |
+| **Memory behavior** | Frees gradient tensor | Keeps tensor allocated |
 | **First backward()** | Allocates fresh tensor | Reuses existing tensor |
-| **Peak memory** | Lower | Higher |
+| **Peak memory** | Same | Same |
 | **Recommended** | ✅ Yes (default) | ❌ Only if needed |
 
 **Benchmark** (1000 parameters, float32):
@@ -852,7 +813,7 @@ param.grad = None  # Just pointer assignment, no memory operation
 param.grad.zero_()  # Must write zeros to entire tensor (memory bandwidth limited)
 ```
 
-### 12.5 Alternative: model.zero_grad()
+### 11.5 Alternative: model.zero_grad()
 
 You can also call `zero_grad()` on the model:
 
@@ -872,7 +833,7 @@ for param in model.parameters():
 
 **Best practice**: Use `optimizer.zero_grad()` for clarity (it's what we're optimizing).
 
-### 12.6 Gradient Accumulation
+### 11.6 Gradient Accumulation
 
 **Intentional accumulation** for large effective batch sizes:
 
@@ -893,33 +854,17 @@ for i, (inputs, labels) in enumerate(dataloader):
 
 **Effect**: Simulates batch size of `batch_size * accumulation_steps` without increased memory.
 
-### 12.7 Common Mistakes
+### 11.7 Common Mistakes
 
 **Mistake 1: Forgetting to zero_grad()**
-
-```python
-# ❌ WRONG: No zero_grad()
-for inputs, labels in dataloader:
-    outputs = model(inputs)
-    loss = criterion(outputs, labels)
-    loss.backward()
-    optimizer.step()  # Gradients keep accumulating!
-
-# Result: Training diverges, loss explodes
-```
+- Gradients keep accumulating across iterations
+- Result: Training diverges, loss explodes
 
 **Mistake 2: Zeroing too often**
-
-```python
-# ❌ WRONG: Zero inside inner loop
-for inputs, labels in dataloader:
-    for i in range(10):
-        optimizer.zero_grad()  # Don't do this!
-        ...
-```
+- Don't call `zero_grad()` inside nested loops unless doing gradient accumulation
+- This wastes computation
 
 **Mistake 3: Zero after backward**
-
 ```python
 # ❌ WRONG: Order matters
 loss.backward()
@@ -927,7 +872,7 @@ optimizer.zero_grad()  # Throws away the gradients!
 optimizer.step()       # No gradients to use
 ```
 
-### 12.8 Execution Flow
+### 11.8 Execution Flow
 
 When you call `optimizer.zero_grad()`:
 
@@ -957,7 +902,7 @@ For each group:
     torch._foreach_zero_([grad1, grad2, ...])  # Single kernel
 ```
 
-### 12.9 Memory and Performance
+### 11.9 Memory and Performance
 
 **Memory impact**:
 
@@ -965,20 +910,23 @@ For each group:
 # Example: Model with 1M parameters (4MB for float32)
 
 # set_to_none=True
-optimizer.zero_grad()
-loss.backward()
+optimizer.zero_grad(set_to_none=True)  # Frees gradient tensor
+loss.backward()                        # Allocates fresh gradient tensor
 # Peak memory: 4MB (params) + 4MB (grads) = 8MB
 
 # set_to_none=False
-optimizer.zero_grad()
-loss.backward()
-# Peak memory: 4MB (params) + 4MB (old grads, zeroed) + 4MB (new grads) = 12MB
-# (briefly, during backward)
+optimizer.zero_grad(set_to_none=False)  # Zeros existing gradient tensor in-place
+loss.backward()                         # Reuses same gradient tensor (accumulates)
+# Peak memory: 4MB (params) + 4MB (grads) = 8MB
 ```
 
-**Performance tip**: For very large models, `set_to_none=True` can save significant memory.
+**Key point**: Peak memory is the **same** for both modes! The difference is:
+- `set_to_none=True`: **Faster** (no memory write operation for zeroing)
+- `set_to_none=False`: **Slower** (must write zeros to entire gradient tensor)
 
-### 12.10 Debugging
+**Performance tip**: Use `set_to_none=True` (the default) for better speed, not for memory savings.
+
+### 11.10 Debugging
 
 **Check if gradients were zeroed**:
 
@@ -1011,7 +959,7 @@ print(f"Accumulated: {torch.allclose(grad_second, grad_first * 2)}")
 # Output: True (gradients doubled)
 ```
 
-### 12.11 Best Practices
+### 11.11 Best Practices
 
 1. **Always call `zero_grad()` before `backward()`** in your training loop
 2. **Use `set_to_none=True`** (default) for better performance
@@ -1033,7 +981,7 @@ for epoch in range(num_epochs):
         optimizer.step()                # Update parameters
 ```
 
-## 13. Important Source Files
+## 12. Important Source Files
 
 | File | Purpose |
 |------|---------|
@@ -1045,63 +993,9 @@ for epoch in range(num_epochs):
 | `torch/optim/_multi_tensor/` | Multi-tensor (foreach) implementations |
 | `torch/optim/lr_scheduler.py` | Learning rate schedulers |
 
-## 14. Complete Training Loop
+## 13. Debugging and Inspection
 
-Putting it all together:
-
-```python
-import torch
-import torch.nn as nn
-from torch.optim import AdamW
-from torch.utils.data import DataLoader
-
-# Model
-model = nn.Sequential(
-    nn.Linear(784, 128),
-    nn.ReLU(),
-    nn.Linear(128, 10)
-)
-
-# Optimizer
-optimizer = AdamW(
-    model.parameters(),
-    lr=0.001,
-    betas=(0.9, 0.999),
-    eps=1e-08,
-    weight_decay=0.01
-)
-
-# Scheduler (optional)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-
-# Training loop
-for epoch in range(10):
-    for inputs, labels in dataloader:
-        # 1. Zero gradients
-        optimizer.zero_grad()
-
-        # 2. Forward pass
-        outputs = model(inputs)
-        loss = nn.functional.cross_entropy(outputs, labels)
-
-        # 3. Backward pass (compute gradients)
-        loss.backward()
-
-        # 4. (Optional) Gradient clipping
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
-        # 5. Optimizer step (update parameters)
-        optimizer.step()
-
-    # 6. (Optional) Update learning rate
-    scheduler.step()
-
-    print(f"Epoch {epoch}, LR: {optimizer.param_groups[0]['lr']:.6f}")
-```
-
-## 15. Debugging and Inspection
-
-### 15.1 Check Gradients
+### 13.1 Check Gradients
 
 ```python
 for name, param in model.named_parameters():
@@ -1111,7 +1005,7 @@ for name, param in model.named_parameters():
         print(f"{name}: no gradient!")
 ```
 
-### 15.2 Check Optimizer State
+### 13.2 Check Optimizer State
 
 ```python
 for group_idx, group in enumerate(optimizer.param_groups):
@@ -1124,7 +1018,7 @@ for group_idx, group in enumerate(optimizer.param_groups):
             print(f"  exp_avg_sq norm: {state['exp_avg_sq'].norm().item():.4f}")
 ```
 
-### 15.3 Monitor Parameter Updates
+### 13.3 Monitor Parameter Updates
 
 ```python
 # Before step
@@ -1138,7 +1032,7 @@ for i, p in enumerate(model.parameters()):
     print(f"Parameter {i}: update norm = {delta:.6f}")
 ```
 
-## 16. Common Issues and Solutions
+## 14. Common Issues and Solutions
 
 ### Issue 1: Exploding/Vanishing Gradients
 
