@@ -12,10 +12,10 @@ def validate_before_execution(command: str) -> list[str]:
     if command.startswith("python"):
         issues.append("Please use `uv run python ...`")
 
-    if "grep" in command:
+    if command.startswith("grep"):
         issues.append("Please use the Bash(rg) instead grep.")
 
-    if "find" in command:
+    if command.startswith("find"):
         issues.append("Please use the Bash(rg) instead of find.")
 
     return issues
