@@ -11,6 +11,7 @@ hidden_size = 128
 output_size = 10  # CIFAR10 has 10 classes
 learning_rate = 0.001
 
+
 class SimpleNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(SimpleNN, self).__init__()
@@ -22,18 +23,18 @@ class SimpleNN(nn.Module):
         x = self.fc2(x)
         return x
 
+
 # Using nn.Sequential
 model = nn.Sequential(
-    nn.Linear(input_size, hidden_size),
-    nn.ReLU(),
-    nn.Linear(hidden_size, output_size)
+    nn.Linear(input_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, output_size)
 )
 
 model = SimpleNN(input_size, hidden_size, output_size)
 optimizer = AdamW(model.parameters(), lr=learning_rate)
 
-train_dataset = datasets.CIFAR10(root='./data', train=True, download=True,
-                                  transform=transforms.ToTensor())
+train_dataset = datasets.CIFAR10(
+    root="./data", train=True, download=True, transform=transforms.ToTensor()
+)
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
 model.train()

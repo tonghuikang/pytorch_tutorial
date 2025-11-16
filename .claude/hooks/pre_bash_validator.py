@@ -18,4 +18,7 @@ def validate_before_execution(command: str) -> list[str]:
     if command.startswith("find"):
         issues.append("Please use the Bash(rg) instead of find.")
 
+    if command.startswith("awk"):
+        issues.append("Please use the Bash(rg) instead of awk.")
+
     return issues
