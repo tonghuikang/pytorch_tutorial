@@ -328,10 +328,7 @@ add_relu = torch.compile(add_relu)
 ```
 
 ### Step 2: First call to `add_relu(x)`
-```python
-# OptimizeContext.__call__ is invoked
-# Frame evaluation hook installed
-```
+TorchDynamo installs an `OptimizeContext` wrapper around the function and registers a custom frame-evaluation hook just before Python starts executing the first bytecode frame.
 
 ### Step 3: TorchDynamo intercepts bytecode
 ```python
@@ -393,10 +390,7 @@ def fused_add_relu_kernel(x_ptr, out_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
 ```
 
 ### Step 7: Caching
-```python
-# Compiled function cached on code object:
-add_relu.__code__._torchdynamo_cache[guard_hash] = compiled_fn
-```
+TorchDynamo creates a `GuardedCode` entry (see `torch/_dynamo/types.py`) that stores the compiled function together with the guard function. The entry is linked to `add_relu.__code__` via the logic in `torch/_dynamo/convert_frame.py`, so later calls can reuse the compiled function whenever the guards pass.
 
 ### Step 8: Execution
 ```python
@@ -582,26 +576,24 @@ Compiled models may use more memory:
 
 ## 11. Integration with nn.Module
 
-When you compile a module, it wraps the `forward` method:
+When you pass an `nn.Module` to `torch.compile`, PyTorch returns a **wrapper module**:
 
 ```python
 model = torch.nn.Linear(128, 10)
 compiled_model = torch.compile(model)
 
-# What happens:
-# model._call_impl is replaced with compiled version
-# Original forward is still accessible
+type(compiled_model)
+# torch._dynamo.eval_frame.OptimizedModule
+
+compiled_model._orig_mod is model  # True
 ```
 
-**Location**: See `.venv/lib/python3.11/site-packages/torch/nn/modules/module.py:~1771`
+Key details:
+- The original module instance is left untouched. Attributes like `_compiled_call_impl` on the original module remain `None`.
+- The wrapper’s `__call__` drives compilation/guard checking (see `.venv/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py`), and forwards to `model.forward` when guards fail or Dynamo is disabled.
+- You can still access the original module via `compiled_model._orig_mod` if you need to inspect or save it.
 
-```python
-def _wrapped_call_impl(self, *args, **kwargs):
-    if self._compiled_call_impl is not None:
-        return self._compiled_call_impl(*args, **kwargs)  # ← Compiled path
-    else:
-        return self._call_impl(*args, **kwargs)  # ← Normal path
-```
+`torch.nn.Module._wrapped_call_impl` (module.py:~1771) is still the normal eager entry point; TorchDynamo intercepts it by installing the wrapper rather than mutating `_call_impl` in place.
 
 ## 12. Performance Tips
 

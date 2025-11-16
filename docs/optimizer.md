@@ -425,11 +425,7 @@ The model has 4 parameters:
 After `loss.backward()` computes gradients, here's what happens when we call `optimizer.step()`:
 
 ### Step 1: Call `optimizer.step()`
-
-```python
-# Enters AdamW.step() (inherits from Adam)
-# Location: adam.py:214
-```
+Execution enters `AdamW.step()` (defined in `torch/optim/adam.py:~214`), which orchestrates the remaining steps.
 
 ### Step 2: CUDA graph health check
 
@@ -533,11 +529,7 @@ torch._foreach_addcdiv_(params_with_grad, exp_avgs, denoms, -step_size)
 ```
 
 ### Step 7: Parameters updated
-
-```python
-# fc1.weight, fc1.bias, fc2.weight, fc2.bias are now updated in-place
-# Ready for next forward pass
-```
+After the foreach kernel finishes, `fc1.weight`, `fc1.bias`, `fc2.weight`, and `fc2.bias` hold the updated values in-place and are ready for the next forward pass.
 
 ## 9. Other Optimizers
 
@@ -719,10 +711,10 @@ loss.backward()
 optimizer.step()
 optimizer.zero_grad()  # Clears gradients for NEXT iteration
 
-# ❌ WRONG: Zero after backward (wastes backward computation)
+# ⚠️ POINTLESS: Zero after backward (wastes backward computation)
 loss.backward()
 optimizer.zero_grad()  # Throws away the gradients we just computed!
-optimizer.step()       # step() will fail (no gradients)
+optimizer.step()       # Runs, but parameters do not change (no gradients)
 ```
 
 **Both patterns 1 and 2 are correct!** Pattern 2 (zero after step) is actually preferred in modern PyTorch because:
@@ -864,13 +856,15 @@ for i, (inputs, labels) in enumerate(dataloader):
 - Don't call `zero_grad()` inside nested loops unless doing gradient accumulation
 - This wastes computation
 
-**Mistake 3: Zero after backward**
+**Mistake 3: Clearii meanng gradients before step**
 ```python
 # ❌ WRONG: Order matters
 loss.backward()
 optimizer.zero_grad()  # Throws away the gradients!
-optimizer.step()       # No gradients to use
+optimizer.step()       # Runs, but nothing updates
 ```
+
+`step()` executes successfully; it just has no gradients left to apply, so the parameters remain unchanged. This ordering wastes the work done by `backward()`.
 
 ### 11.8 Execution Flow
 
