@@ -290,6 +290,8 @@ optimizer.load_state_dict(state_dict)  # Restore state
 
 ## 6. Functional Implementation
 
+**Location**: `.venv/lib/python3.11/site-packages/torch/optim/adam.py:~345` (_single_tensor_adam), `:~544` (_multi_tensor_adam/foreach), `:~789` (_fused_adam)
+
 The actual parameter updates are performed by functional implementations that support multiple execution modes.
 
 ### 6.1 Execution Modes

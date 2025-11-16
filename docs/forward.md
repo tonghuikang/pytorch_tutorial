@@ -207,6 +207,8 @@ struct TORCH_API MulBackward0 : public TraceableFunction {
 
 ## 8. Operation Dispatch and Graph Construction
 
+**Location**: `.venv/lib/python3.11/site-packages/torch/_ops.py` (dispatcher core), `.venv/lib/python3.11/site-packages/torch/_library/autograd.py` (backward node creation)
+
 When you call operations like `+`, `*`, `relu()`, etc., PyTorch:
 
 1. **Checks if gradient tracking is needed**:

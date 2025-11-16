@@ -68,6 +68,8 @@ print(t.data_ptr())
 
 ## 2. Tensor Metadata: How to Interpret Storage
 
+**Location**: `.venv/lib/python3.11/site-packages/torch/_tensor.py:~108` (Tensor class), `.venv/lib/python3.11/site-packages/torch/_C/__init__.pyi` (TensorBase properties)
+
 A tensor knows how to interpret its storage through metadata:
 
 ```python
@@ -227,6 +229,8 @@ print('Same storage?', t_noncontig.data_ptr() == t_contig.data_ptr())
 ## 4. Contiguous vs Non-Contiguous Tensors
 
 ### 4.1 What is Contiguous?
+
+**Location**: `.venv/lib/python3.11/site-packages/torch/_C/__init__.pyi:~5840` (`is_contiguous()` method)
 
 A tensor is **contiguous** if its elements are laid out sequentially in memory in the order you'd expect from its shape.
 

@@ -373,6 +373,9 @@ graph():
 ```
 
 ### Step 6: Backend compilation (Inductor)
+
+**Location**: `.venv/lib/python3.11/site-packages/torch/_inductor/codegen/triton.py:~4029` (codegen_kernel)
+
 ```python
 # Inductor receives FX graph
 # Analyzes: add + relu can be fused
@@ -390,7 +393,10 @@ def fused_add_relu_kernel(x_ptr, out_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
 ```
 
 ### Step 7: Caching
-TorchDynamo creates a `GuardedCode` entry (see `torch/_dynamo/types.py`) that stores the compiled function together with the guard function. The entry is linked to `add_relu.__code__` via the logic in `torch/_dynamo/convert_frame.py`, so later calls can reuse the compiled function whenever the guards pass.
+
+**Location**: `.venv/lib/python3.11/site-packages/torch/_dynamo/types.py:~65` (GuardedCode), `.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py` (caching logic)
+
+TorchDynamo creates a `GuardedCode` entry that stores the compiled function together with the guard function. The entry is linked to `add_relu.__code__` via the logic in `convert_frame.py`, so later calls can reuse the compiled function whenever the guards pass.
 
 ### Step 8: Execution
 ```python
@@ -575,6 +581,8 @@ Compiled models may use more memory:
 - Workspace memory (CUDA graphs)
 
 ## 11. Integration with nn.Module
+
+**Location**: `.venv/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py:~340` (OptimizedModule)
 
 When you pass an `nn.Module` to `torch.compile`, PyTorch returns a **wrapper module**:
 

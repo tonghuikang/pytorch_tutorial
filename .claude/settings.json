@@ -20,6 +20,7 @@
         ],
         "deny": [
             "Grep",
+            "Glob",
             "Bash(find:*)"
         ]
     },
