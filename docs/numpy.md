@@ -513,60 +513,157 @@ h = relu(x @ W1 + b1)
 y = h @ W2 + b2
 ```
 
-**PyTorch** (still just `loss.backward()`):
+#### PyTorch Complete Example
+
 ```python
+import torch
+
+# Set seed for reproducibility
+torch.manual_seed(42)
+
+# Set dimensions
+batch_size = 32
+input_dim = 10
+hidden_dim = 20
+output_dim = 5
+lr = 0.01
+
+# Initialize parameters
 W1 = torch.randn(input_dim, hidden_dim, requires_grad=True)
 b1 = torch.randn(hidden_dim, requires_grad=True)
 W2 = torch.randn(hidden_dim, output_dim, requires_grad=True)
 b2 = torch.randn(output_dim, requires_grad=True)
 
-# Forward
-h = torch.relu(x @ W1 + b1)
-y_pred = h @ W2 + b2
-loss = torch.mean((y_pred - y_true) ** 2)
+# Generate synthetic data
+x = torch.randn(batch_size, input_dim)
+y_true = torch.randn(batch_size, output_dim)
 
-# Backward (automatic!)
-loss.backward()
+# Training loop
+for epoch in range(100):
+    # Forward pass
+    h = torch.relu(x @ W1 + b1)
+    y_pred = h @ W2 + b2
+    loss = torch.mean((y_pred - y_true) ** 2)
 
-# Update all parameters
-with torch.no_grad():
-    W1 -= lr * W1.grad
-    b1 -= lr * b1.grad
-    W2 -= lr * W2.grad
-    b2 -= lr * b2.grad
-    W1.grad.zero_()
-    b1.grad.zero_()
-    W2.grad.zero_()
-    b2.grad.zero_()
+    # Backward pass (automatic!)
+    loss.backward()
+
+    # Update all parameters
+    with torch.no_grad():
+        W1 -= lr * W1.grad
+        b1 -= lr * b1.grad
+        W2 -= lr * W2.grad
+        b2 -= lr * b2.grad
+
+        # Zero gradients
+        W1.grad.zero_()
+        b1.grad.zero_()
+        W2.grad.zero_()
+        b2.grad.zero_()
+
+    if epoch % 20 == 0:
+        print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+
+print(f"\nFinal loss: {loss.item():.4f}")
 ```
 
-**NumPy manual backprop**:
+#### NumPy Complete Example
+
 ```python
-# Forward
-h = np.maximum(0, x @ W1 + b1)  # ReLU
-y_pred = h @ W2 + b2
+import numpy as np
 
-# Backward (manual chain rule)
-dL_dy = (2.0 / n) * (y_pred - y_true)
+# Set dimensions
+batch_size = 32
+input_dim = 10
+hidden_dim = 20
+output_dim = 5
+lr = 0.01
 
-# Gradient through W2, b2
-dL_dW2 = dL_dy.T @ h
-dL_db2 = np.sum(dL_dy, axis=0)
+# Initialize parameters
+np.random.seed(42)
+W1 = np.random.randn(input_dim, hidden_dim) * 0.1
+b1 = np.random.randn(hidden_dim) * 0.1
+W2 = np.random.randn(hidden_dim, output_dim) * 0.1
+b2 = np.random.randn(output_dim) * 0.1
 
-# Gradient through ReLU
-dL_dh = dL_dy @ W2.T
-dL_dh = dL_dh * (h > 0)  # ReLU derivative: 1 if h > 0, else 0
+# Generate synthetic data
+x = np.random.randn(batch_size, input_dim)
+y_true = np.random.randn(batch_size, output_dim)
 
-# Gradient through W1, b1
-dL_dW1 = dL_dh.T @ x
-dL_db1 = np.sum(dL_dh, axis=0)
+# Training loop
+for epoch in range(100):
+    # ==================== FORWARD PASS ====================
+    h = np.maximum(0, x @ W1 + b1)  # ReLU activation
+    y_pred = h @ W2 + b2
 
-# Update
-W1 -= lr * dL_dW1
-b1 -= lr * dL_db1
-W2 -= lr * dL_dW2
-b2 -= lr * dL_db2
+    # Compute loss
+    diff = y_pred - y_true
+    loss = np.mean(diff ** 2)
+
+    # ==================== BACKWARD PASS ====================
+    # Gradient of loss with respect to predictions
+    dL_dy = (2.0 / batch_size) * diff
+
+    # Gradient through second layer (W2, b2)
+    dL_dW2 = h.T @ dL_dy
+    dL_db2 = np.sum(dL_dy, axis=0)
+
+    # Gradient through ReLU activation
+    dL_dh = dL_dy @ W2.T
+    dL_dh = dL_dh * (h > 0)  # ReLU derivative: 1 if h > 0, else 0
+
+    # Gradient through first layer (W1, b1)
+    dL_dW1 = x.T @ dL_dh
+    dL_db1 = np.sum(dL_dh, axis=0)
+
+    # ==================== PARAMETER UPDATE ====================
+    W1 -= lr * dL_dW1
+    b1 -= lr * dL_db1
+    W2 -= lr * dL_dW2
+    b2 -= lr * dL_db2
+
+    if epoch % 20 == 0:
+        print(f"Epoch {epoch}, Loss: {loss:.4f}")
+
+print(f"\nFinal loss: {loss:.4f}")
 ```
+
+**Output comparison**:
+
+PyTorch (with seed=42):
+```
+Epoch 0, Loss: 60.0807
+Epoch 20, Loss: 9.9765
+Epoch 40, Loss: 4.7447
+Epoch 60, Loss: 3.0358
+Epoch 80, Loss: 2.2175
+
+Final loss: 1.7579
+```
+
+NumPy (with seed=42):
+```
+Epoch 0, Loss: 1.0435
+Epoch 20, Loss: 0.9128
+Epoch 40, Loss: 0.8478
+Epoch 60, Loss: 0.7995
+Epoch 80, Loss: 0.7578
+
+Final loss: 0.7229
+```
+
+**Why are the losses different?**
+
+Even though both use seed=42, the results differ for two reasons:
+1. **Different RNGs**: PyTorch and NumPy use different random number generators, so they produce different random initializations
+2. **Different scales**: NumPy weights are scaled by `0.1` (smaller initialization), while PyTorch uses default scale `1.0`
+
+The NumPy initialization is 10x smaller, leading to:
+- ✅ Lower initial loss (1.04 vs 60.08)
+- ✅ More stable training
+- ⚠️ Slower convergence
+
+Both implementations are **correct** - they demonstrate that backpropagation works regardless of initialization!
 
 **Complexity explosion**:
 - 1 layer: ~3 lines of gradient code
