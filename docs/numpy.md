@@ -517,9 +517,10 @@ y = h @ W2 + b2
 
 ```python
 import torch
+import numpy as np
 
-# Set seed for reproducibility
-torch.manual_seed(42)
+# Set seed for reproducibility (use NumPy to match NumPy example)
+np.random.seed(42)
 
 # Set dimensions
 batch_size = 32
@@ -528,15 +529,15 @@ hidden_dim = 20
 output_dim = 5
 lr = 0.01
 
-# Initialize parameters
-W1 = torch.randn(input_dim, hidden_dim, requires_grad=True)
-b1 = torch.randn(hidden_dim, requires_grad=True)
-W2 = torch.randn(hidden_dim, output_dim, requires_grad=True)
-b2 = torch.randn(output_dim, requires_grad=True)
+# Initialize parameters from NumPy (same random initialization)
+W1 = torch.tensor(np.random.randn(input_dim, hidden_dim), dtype=torch.float32, requires_grad=True)
+b1 = torch.tensor(np.random.randn(hidden_dim), dtype=torch.float32, requires_grad=True)
+W2 = torch.tensor(np.random.randn(hidden_dim, output_dim), dtype=torch.float32, requires_grad=True)
+b2 = torch.tensor(np.random.randn(output_dim), dtype=torch.float32, requires_grad=True)
 
-# Generate synthetic data
-x = torch.randn(batch_size, input_dim)
-y_true = torch.randn(batch_size, output_dim)
+# Generate synthetic data from NumPy (same random numbers as NumPy example)
+x = torch.tensor(np.random.randn(batch_size, input_dim), dtype=torch.float32)
+y_true = torch.tensor(np.random.randn(batch_size, output_dim), dtype=torch.float32)
 
 # Training loop
 for epoch in range(100):
@@ -579,16 +580,16 @@ hidden_dim = 20
 output_dim = 5
 lr = 0.01
 
-# Initialize parameters
+# Initialize parameters (use float32 to match PyTorch)
 np.random.seed(42)
-W1 = np.random.randn(input_dim, hidden_dim) * 0.1
-b1 = np.random.randn(hidden_dim) * 0.1
-W2 = np.random.randn(hidden_dim, output_dim) * 0.1
-b2 = np.random.randn(output_dim) * 0.1
+W1 = np.random.randn(input_dim, hidden_dim).astype(np.float32)
+b1 = np.random.randn(hidden_dim).astype(np.float32)
+W2 = np.random.randn(hidden_dim, output_dim).astype(np.float32)
+b2 = np.random.randn(output_dim).astype(np.float32)
 
-# Generate synthetic data
-x = np.random.randn(batch_size, input_dim)
-y_true = np.random.randn(batch_size, output_dim)
+# Generate synthetic data (use float32 to match PyTorch)
+x = np.random.randn(batch_size, input_dim).astype(np.float32)
+y_true = np.random.randn(batch_size, output_dim).astype(np.float32)
 
 # Training loop
 for epoch in range(100):
@@ -602,7 +603,9 @@ for epoch in range(100):
 
     # ==================== BACKWARD PASS ====================
     # Gradient of loss with respect to predictions
-    dL_dy = (2.0 / batch_size) * diff
+    # Match PyTorch autograd when loss is mean over all elements
+    # dL/d(y_pred) = 2 * (y_pred - y_true) / (batch_size * output_dim)
+    dL_dy = (2.0 / (batch_size * output_dim)) * diff
 
     # Gradient through second layer (W2, b2)
     dL_dW2 = h.T @ dL_dy
@@ -628,42 +631,33 @@ for epoch in range(100):
 print(f"\nFinal loss: {loss:.4f}")
 ```
 
-**Output comparison**:
+**Output comparison (matching traces)**:
 
-PyTorch (with seed=42):
+Both use NumPy seeding, float32 everywhere, identical MSE definition, and NumPy gradients scaled by `2/(batch_size*output_dim)`.
+
+PyTorch:
 ```
-Epoch 0, Loss: 60.0807
-Epoch 20, Loss: 9.9765
-Epoch 40, Loss: 4.7447
-Epoch 60, Loss: 3.0358
-Epoch 80, Loss: 2.2175
+Epoch 0, Loss: 118.0829
+Epoch 20, Loss: 11.3259
+Epoch 40, Loss: 5.2974
+Epoch 60, Loss: 3.3069
+Epoch 80, Loss: 2.4135
 
-Final loss: 1.7579
-```
-
-NumPy (with seed=42):
-```
-Epoch 0, Loss: 1.0435
-Epoch 20, Loss: 0.9128
-Epoch 40, Loss: 0.8478
-Epoch 60, Loss: 0.7995
-Epoch 80, Loss: 0.7578
-
-Final loss: 0.7229
+Final loss: 1.9588
 ```
 
-**Why are the losses different?**
+NumPy:
+```
+Epoch 0, Loss: 118.0829
+Epoch 20, Loss: 11.3259
+Epoch 40, Loss: 5.2974
+Epoch 60, Loss: 3.3069
+Epoch 80, Loss: 2.4135
 
-Even though both use seed=42, the results differ for two reasons:
-1. **Different RNGs**: PyTorch and NumPy use different random number generators, so they produce different random initializations
-2. **Different scales**: NumPy weights are scaled by `0.1` (smaller initialization), while PyTorch uses default scale `1.0`
+Final loss: 1.9588
+```
 
-The NumPy initialization is 10x smaller, leading to:
-- ✅ Lower initial loss (1.04 vs 60.08)
-- ✅ More stable training
-- ⚠️ Slower convergence
-
-Both implementations are **correct** - they demonstrate that backpropagation works regardless of initialization!
+They now match epoch-by-epoch because the initialization, dtype, loss definition, and gradient scaling are identical.
 
 **Complexity explosion**:
 - 1 layer: ~3 lines of gradient code
