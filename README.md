@@ -6,6 +6,14 @@ A tutorial project exploring PyTorch's internal architecture and automatic diffe
 
 This repository contains detailed analyses of PyTorch's internal architecture:
 
+- **[docs/syntax.md](docs/syntax.md)** - Essential syntax reference for NumPy and PyTorch
+  - **Ordered for learning**: Creation → Element-wise ops → Special operators (`@`, `.T`) → Manipulation → Advanced
+  - Matrix multiplication (`@`), transpose (`.T`), element-wise operations
+  - Array/tensor creation, reshaping, indexing, and slicing
+  - Broadcasting rules and aggregation functions
+  - Linear algebra operations and common activations
+  - Side-by-side comparison with key differences highlighted
+
 - **[docs/tensor.md](docs/tensor.md)** - Comprehensive analysis of how PyTorch stores tensor data
   - Storage vs tensor metadata (shape, strides, offset)
   - Storage sharing and view mechanics
