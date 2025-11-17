@@ -26,6 +26,13 @@ This repository contains detailed analyses of PyTorch's internal architecture:
   - Chain rule implementation
   - Gradient accumulation
 
+- **[docs/numpy.md](docs/numpy.md)** - Comparison of backpropagation: PyTorch vs NumPy
+  - Manual gradient derivation and implementation
+  - PyTorch automatic differentiation vs NumPy manual computation
+  - Scalar and matrix implementations
+  - Common pitfalls in manual backpropagation
+  - Performance and feature comparisons
+
 - **[docs/optimizer.md](docs/optimizer.md)** - Comprehensive analysis of how PyTorch's `optimizer.step()` works
   - Optimizer base class architecture
   - Adam/AdamW algorithm implementation
