@@ -174,10 +174,24 @@ Epoch 80, Loss: 0.0234
 ### 3.1 What Happens During `loss.backward()`
 
 ```python
-# Forward pass builds this graph:
-# loss ← mean ← pow ← sub ← add ← matmul
-#                      ↑      ↑      ↑
-#                   y_true    b    A, x
+# Forward pass builds this computational graph:
+#
+#   A, x ───────┐
+#               ├───→ matmul ───→ result1
+#               │
+#       b ──────┼───────────────→ add ───→ y_pred
+#               │                  ▲
+#   y_true ─────┼──────────────────┼─────→ sub ───→ diff
+#               │                  │         ▲
+#               │                  │         └────→ pow ───→ squared_diff
+#               │                  │                   ▲
+#               │                  │                   └────→ mean ───→ loss
+#
+# Backward graph (PyTorch builds this automatically):
+#   gradient flows backward (right to left):
+#
+#   A.grad ←── MmBackward ←── AddBackward ←── SubBackward ←── PowBackward ←── MeanBackward ←── loss
+#   b.grad ←──────────────────┘
 
 # backward() traverses in reverse:
 loss.backward()
@@ -513,6 +527,31 @@ h = relu(x @ W1 + b1)
 y = h @ W2 + b2
 ```
 
+**Architecture**:
+```
+(Untrainable)
+       x                                                         y_true
+       │                                                           |
+       ▼                                                           ▼
+┌─────────────┐   ┌──────┐         ┌─────────────┐         ┌───────────────┐
+│ x @ W1 + b1 │──→│ ReLU │──→ h ──→│ h @ W2 + b2 │──→ y ──→│ (y, y_true)^2 │──→ L
+└─────────────┘   └──────┘         └─────────────┘         └───────────────┘
+       ▲                                  ▲
+       │                                  │
+     W1,b1                              W2,b2                     
+(Trainable)
+
+Dimensions:
+  x:      (batch, input_dim)     e.g., (32, 10)
+  W1:     (input_dim, hidden)    e.g., (10, 20)
+  b1:     (hidden,)              e.g., (20,)
+  h:      (batch, hidden)        e.g., (32, 20)
+  W2:     (hidden, output_dim)   e.g., (20, 5)
+  b2:     (output_dim,)          e.g., (5,)
+  y:      (batch, output_dim)    e.g., (32, 5)
+  y_true: (batch, output_dim)    e.g., (32, 5)
+```
+
 #### PyTorch Complete Example
 
 ```python
@@ -608,6 +647,16 @@ for epoch in range(100):
     dL_dy = (2.0 / (batch_size * output_dim)) * diff
 
     # Gradient through second layer (W2, b2)
+    # Forward: y_pred = h @ W2 + b2  where h is (batch, hidden), W2 is (hidden, output)
+    # By chain rule: dL/dW2 = sum over batch of (h[i].T @ dL_dy[i]) for each sample i
+    #
+    # Why .T? Need to match shapes:
+    #   h is (batch, hidden) but we need (hidden, batch) to multiply with dL_dy
+    #   dL_dy is (batch, output)
+    #   h.T @ dL_dy: (hidden, batch) @ (batch, output) = (hidden, output) ← matches W2 shape!
+    #
+    # Intuition: Each weight W2[i,j] affects all batch samples, so we sum contributions
+    #            from all samples by doing the matrix multiplication with transposed h
     dL_dW2 = h.T @ dL_dy
     dL_db2 = np.sum(dL_dy, axis=0)
 
@@ -616,6 +665,13 @@ for epoch in range(100):
     dL_dh = dL_dh * (h > 0)  # ReLU derivative: 1 if h > 0, else 0
 
     # Gradient through first layer (W1, b1)
+    # Forward: h = x @ W1 + b1  where x is (batch, input), W1 is (input, hidden)
+    # By chain rule: dL/dW1 = sum over batch of (x[i].T @ dL_dh[i]) for each sample i
+    #
+    # Why .T? Need to match shapes:
+    #   x is (batch, input) but we need (input, batch) to multiply with dL_dh
+    #   dL_dh is (batch, hidden)
+    #   x.T @ dL_dh: (input, batch) @ (batch, hidden) = (input, hidden) ← matches W1 shape!
     dL_dW1 = x.T @ dL_dh
     dL_db1 = np.sum(dL_dh, axis=0)
 
@@ -773,8 +829,9 @@ Despite PyTorch's advantages, NumPy-only implementations are useful for:
 # PyTorch: 1 line
 loss.backward()
 
-# C++: Requires deriving and implementing every gradient by hand
-# For a 100-layer ResNet: thousands of lines of matrix calculus
+# Manual implementation (C++/NumPy without autodiff):
+# Requires deriving and implementing every gradient by hand
+# For a 100-layer ResNet: thousands of lines of matrix calculus and chain rule applications
 ```
 
 This is why **automatic differentiation** is one of the most important innovations in machine learning tooling—and why frameworks like PyTorch have become essential for modern AI development.

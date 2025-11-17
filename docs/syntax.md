@@ -147,18 +147,25 @@ The `@` operator performs matrix/vector multiplication.
 ```python
 import numpy as np
 
-A = np.array([[1, 2], [3, 4]])  # 2×2 matrix
-B = np.array([[5, 6], [7, 8]])  # 2×2 matrix
-v = np.array([1, 2])             # 1D vector
+A = np.array([[1, 2, 3],
+              [4, 5, 6]])           # 2×3 matrix
+B = np.array([[7, 8],
+              [9, 10],
+              [11, 12]])            # 3×2 matrix
+v = np.array([1, 2, 3])             # 1D vector
 
 # Matrix @ Matrix
-A @ B              # [[19, 22], [43, 50]]
+A @ B              # [[58, 64], [139, 154]]
+                   # [[1*7+2*9+3*11, 1*8+2*10+3*12],
+                   #  [4*7+5*9+6*11, 4*8+5*10+6*12]]
 
 # Matrix @ Vector
-A @ v              # [5, 11]
+A @ v              # [14, 32]
+                   # [1*1+2*2+3*3, 4*1+5*2+6*3]
 
 # Vector @ Vector (dot product)
-v @ v              # 5
+v @ v              # 14
+                   # 1*1 + 2*2 + 3*3
 
 # Alternative: np.dot()
 np.dot(A, B)       # Same as A @ B
@@ -168,18 +175,25 @@ np.dot(A, B)       # Same as A @ B
 ```python
 import torch
 
-A = torch.tensor([[1, 2], [3, 4]])  # 2×2 tensor
-B = torch.tensor([[5, 6], [7, 8]])  # 2×2 tensor
-v = torch.tensor([1, 2])             # 1D tensor
+A = torch.tensor([[1, 2, 3],
+                  [4, 5, 6]])           # 2×3 tensor
+B = torch.tensor([[7, 8],
+                  [9, 10],
+                  [11, 12]])            # 3×2 tensor
+v = torch.tensor([1, 2, 3])             # 1D tensor
 
 # Tensor @ Tensor
-A @ B              # tensor([[19, 22], [43, 50]])
+A @ B              # tensor([[58, 64], [139, 154]])
+                   # [[1*7+2*9+3*11, 1*8+2*10+3*12],
+                   #  [4*7+5*9+6*11, 4*8+5*10+6*12]]
 
 # Tensor @ Vector
-A @ v              # tensor([5, 11])
+A @ v              # tensor([14, 32])
+                   # [1*1+2*2+3*3, 4*1+5*2+6*3]
 
 # Vector @ Vector (dot product)
-v @ v              # tensor(5)
+v @ v              # tensor(14)
+                   # 1*1 + 2*2 + 3*3
 
 # Alternatives
 torch.matmul(A, B)  # Same as A @ B
@@ -575,3 +589,171 @@ F.softmax(x, dim=0)  # tensor([0.01, 0.03, 0.09, 0.24, 0.64])
 | **Inverse** | `np.linalg.inv(A)` | `torch.linalg.inv(A)` |
 | **ReLU** | `np.maximum(0, x)` | `F.relu(x)` |
 
+---
+
+## Key Differences & Common Footguns
+
+### 1. **`axis` vs `dim`**
+```python
+# NumPy uses 'axis'
+np.sum(a, axis=0)
+np.mean(a, axis=1)
+
+# PyTorch uses 'dim'
+torch.sum(a, dim=0)
+torch.mean(a, dim=1)
+```
+
+### 2. **Type Requirements**
+```python
+# NumPy is flexible with integer types
+a = np.array([1, 2, 3])
+np.mean(a)  # Works: 2.0
+
+# PyTorch requires float for some operations
+a = torch.tensor([1, 2, 3])
+torch.mean(a)  # ERROR! Needs float
+torch.mean(a.float())  # Works: tensor(2.)
+```
+
+### 3. **In-place Operations**
+```python
+# NumPy: most operations return new arrays
+a = np.array([1, 2, 3])
+b = a + 1  # New array
+
+# PyTorch: underscore suffix = in-place
+a = torch.tensor([1, 2, 3])
+a.add_(1)  # Modifies a in-place!
+a.relu_()  # In-place ReLU
+```
+
+### 4. **Random Number Generation**
+```python
+# NumPy: global state (legacy)
+np.random.seed(42)
+np.random.randn(3, 4)
+
+# PyTorch: use generators (preferred)
+generator = torch.Generator().manual_seed(42)
+torch.randn(3, 4, generator=generator)
+
+# Or global (not recommended)
+torch.manual_seed(42)
+torch.randn(3, 4)
+```
+
+### 5. **Copy vs View**
+```python
+# NumPy: slicing creates views
+a = np.array([1, 2, 3, 4])
+b = a[1:3]  # View
+b[0] = 99   # Modifies a too!
+
+# PyTorch: same behavior!
+a = torch.tensor([1, 2, 3, 4])
+b = a[1:3]  # View
+b[0] = 99   # Also modifies a!
+
+# Both: use .copy() or .clone()
+b = a[1:3].copy()   # NumPy
+b = a[1:3].clone()  # PyTorch
+```
+
+### 6. **Device Management (GPU)**
+```python
+# NumPy: CPU only
+a = np.array([1, 2, 3])
+
+# PyTorch: explicit device management
+a = torch.tensor([1, 2, 3])  # CPU by default
+a_gpu = a.to('cuda')  # Move to GPU
+a_gpu = a.cuda()      # Alternative
+
+# FOOTGUN: Operations require same device!
+a_cpu = torch.tensor([1, 2, 3])
+a_gpu = torch.tensor([4, 5, 6]).cuda()
+a_cpu + a_gpu  # ERROR! Different devices
+```
+
+### 7. **Gradient Tracking**
+```python
+# PyTorch: automatic differentiation
+a = torch.tensor([1., 2., 3.], requires_grad=True)
+b = a * 2
+b.sum().backward()  # Computes gradients
+print(a.grad)  # tensor([2., 2., 2.])
+
+# FOOTGUN: In-place ops break gradient tracking!
+a = torch.tensor([1., 2., 3.], requires_grad=True)
+a += 1  # ERROR or warning!
+```
+
+### 8. **Boolean Indexing Returns**
+```python
+# NumPy: returns array
+a = np.array([1, 2, 3, 4])
+result = a[a > 2]  # array([3, 4])
+
+# PyTorch: returns tensor (same behavior)
+a = torch.tensor([1, 2, 3, 4])
+result = a[a > 2]  # tensor([3, 4])
+```
+
+### 9. **Reverse/Flip**
+```python
+# NumPy: negative stride
+a = np.array([1, 2, 3, 4])
+a[::-1]  # [4, 3, 2, 1]
+
+# PyTorch: use flip() method
+a = torch.tensor([1, 2, 3, 4])
+a.flip(0)  # tensor([4, 3, 2, 1])
+# a[::-1] doesn't work in PyTorch!
+```
+
+### 10. **Matrix Multiplication Variants**
+```python
+# NumPy
+np.dot(a, b)      # General dot product
+a @ b             # Matrix multiplication (preferred)
+
+# PyTorch
+torch.matmul(a, b)  # General, handles broadcasting
+torch.mm(a, b)      # Only 2D matrices
+torch.bmm(a, b)     # Batch matrix multiplication
+a @ b               # Same as matmul (preferred)
+
+# FOOTGUN: torch.mm doesn't broadcast!
+A = torch.randn(2, 3)
+B = torch.randn(3, 4, 5)
+torch.matmul(A, B)  # Works: (2, 4, 5)
+torch.mm(A, B)      # ERROR! mm requires 2D
+```
+
+### 11. **Reshape vs View**
+```python
+# NumPy: reshape always works
+a = np.arange(6)
+a.reshape(2, 3)  # Always succeeds
+
+# PyTorch: view requires contiguous memory
+a = torch.arange(6)
+a.view(2, 3)      # Works (contiguous)
+a.t().view(6)     # ERROR! Not contiguous
+a.t().reshape(6)  # Works (handles non-contiguous)
+```
+
+### 12. **Size vs Shape**
+```python
+# NumPy: .shape and .size
+a = np.array([[1, 2], [3, 4]])
+a.shape  # (2, 2)
+a.size   # 4 (total elements)
+
+# PyTorch: .shape, .size(), .numel()
+a = torch.tensor([[1, 2], [3, 4]])
+a.shape    # torch.Size([2, 2])
+a.size()   # torch.Size([2, 2]) - it's a method!
+a.numel()  # 4 (total elements)
+```

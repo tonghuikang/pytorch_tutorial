@@ -7,7 +7,6 @@ A tutorial project exploring PyTorch's internal architecture and automatic diffe
 This repository contains detailed analyses of PyTorch's internal architecture:
 
 - **[docs/syntax.md](docs/syntax.md)** - Essential syntax reference for NumPy and PyTorch
-  - **Ordered for learning**: Creation → Element-wise ops → Special operators (`@`, `.T`) → Manipulation → Advanced
   - Matrix multiplication (`@`), transpose (`.T`), element-wise operations
   - Array/tensor creation, reshaping, indexing, and slicing
   - Broadcasting rules and aggregation functions
