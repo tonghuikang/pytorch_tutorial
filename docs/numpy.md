@@ -48,6 +48,21 @@ For a single sample:
 L = (y_pred - y_true)²
 ```
 
+This is the graph
+```
+(Untrainable)
+     x                          y_true
+     │                             |
+     ▼                             ▼
+┌───────────┐              ┌───────────────┐
+│ A * x + b │──→ y_pred ──→│ (y, y_true)^2 │──→ L
+└───────────┘              └───────────────┘
+     ▲
+     │
+    A,b
+(Trainable)
+```
+
 ### 1.3 The Learning Goal
 
 Find optimal `A` and `b` that minimize `L` using **gradient descent**:
@@ -175,6 +190,8 @@ Epoch 80, Loss: 0.0234
 
 ```python
 # Forward pass builds this computational graph:
+#
+# NOTE: drawing is unvalidated
 #
 #   A, x ───────┐
 #               ├───→ matmul ───→ result1
@@ -538,7 +555,7 @@ y = h @ W2 + b2
 └─────────────┘   └──────┘         └─────────────┘         └───────────────┘
        ▲                                  ▲
        │                                  │
-     W1,b1                              W2,b2                     
+     W1,b1                              W2,b2
 (Trainable)
 
 Dimensions:
