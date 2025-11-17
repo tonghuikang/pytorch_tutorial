@@ -313,19 +313,35 @@ Real neural networks use matrices. Let's extend both implementations.
 ### 5.1 Problem Setup
 
 ```
-A: [output_dim, input_dim]
+A: [input_dim, output_dim]
 x: [batch_size, input_dim]
 b: [output_dim]
 
-y_pred = x @ A.T + b  (broadcasting b across batch)
+y_pred = x @ A + b  (broadcasting b across batch)
 ```
+
+This is the graph
+```
+(Untrainable)
+      x                             y_true
+      │                               |
+      ▼                               ▼
+┌───────────┐              ┌────────────────────┐
+│ x @ A + b │──→ y_pred ──→│ (y_pred, y_true)^2 │──→ L
+└───────────┘              └────────────────────┘
+      ▲
+      │
+     A,b
+(Trainable)
+```
+
 
 ### 5.2 Gradient Derivation for Matrices
 
-For matrix multiplication `Y = X @ A.T`:
+For matrix multiplication `Y = X @ A`:
 
 ```
-∂L/∂A = (∂L/∂Y).T @ X
+∂L/∂A = X.T @ (∂L/∂Y)
 ∂L/∂b = sum(∂L/∂Y, axis=0)  (sum over batch dimension)
 ```
 
@@ -335,24 +351,28 @@ Where `∂L/∂Y` has shape `[batch_size, output_dim]`.
 
 ```python
 import torch
+import numpy as np
+
+# Set seed for reproducibility (use NumPy to match NumPy example)
+np.random.seed(42)
 
 # Multi-dimensional case
 input_dim = 5
 output_dim = 3
 batch_size = 4
 
-# Initialize
-A = torch.randn(output_dim, input_dim, requires_grad=True)
-b = torch.randn(output_dim, requires_grad=True)
+# Initialize parameters from NumPy (same random initialization)
+A = torch.tensor(np.random.randn(input_dim, output_dim), dtype=torch.float32, requires_grad=True)
+b = torch.tensor(np.random.randn(output_dim), dtype=torch.float32, requires_grad=True)
 lr = 0.01
 
-# Data
-x = torch.randn(batch_size, input_dim)
-y_true = torch.randn(batch_size, output_dim)
+# Data from NumPy
+x = torch.tensor(np.random.randn(batch_size, input_dim), dtype=torch.float32)
+y_true = torch.tensor(np.random.randn(batch_size, output_dim), dtype=torch.float32)
 
 # Training loop (same as before!)
 for epoch in range(100):
-    y_pred = x @ A.t() + b  # [batch_size, output_dim]
+    y_pred = x @ A + b  # [batch_size, output_dim]
     loss = torch.mean((y_pred - y_true) ** 2)
 
     loss.backward()  # Still automatic!
@@ -362,6 +382,11 @@ for epoch in range(100):
         b -= lr * b.grad
         A.grad.zero_()
         b.grad.zero_()
+
+    if epoch % 20 == 0:
+        print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+
+print(f"\nFinal loss: {loss.item():.4f}")
 ```
 
 **PyTorch handles**:
@@ -383,31 +408,32 @@ input_dim = 5
 output_dim = 3
 lr = 0.01
 
-# Initialize parameters
+# Initialize parameters (use float32 to match PyTorch)
 np.random.seed(42)
-A = np.random.randn(output_dim, input_dim)
-b = np.random.randn(output_dim)
+A = np.random.randn(input_dim, output_dim).astype(np.float32)
+b = np.random.randn(output_dim).astype(np.float32)
 
-# Training data
-x = np.random.randn(batch_size, input_dim)
-y_true = np.random.randn(batch_size, output_dim)
+# Training data (use float32 to match PyTorch)
+x = np.random.randn(batch_size, input_dim).astype(np.float32)
+y_true = np.random.randn(batch_size, output_dim).astype(np.float32)
 
 # Training loop
 for epoch in range(100):
     # ==================== FORWARD PASS ====================
-    # y_pred = x @ A.T + b (broadcast b)
-    y_pred = x @ A.T + b  # Shape: [batch_size, output_dim]
+    # y_pred = x @ A + b (broadcast b)
+    y_pred = x @ A + b  # Shape: [batch_size, output_dim]
 
     # Compute loss
     diff = y_pred - y_true
     loss = np.mean(diff ** 2)
 
     # ==================== BACKWARD PASS ====================
-    # ∂L/∂y_pred = (2/n) * (y_pred - y_true)
-    dL_dy = (2.0 / batch_size) * diff
+    # Match PyTorch autograd when loss is mean over all elements
+    # dL/d(y_pred) = 2 * (y_pred - y_true) / (batch_size * output_dim)
+    dL_dy = (2.0 / (batch_size * output_dim)) * diff
 
-    # ∂L/∂A = dL_dy.T @ x
-    dL_dA = dL_dy.T @ x
+    # ∂L/∂A = x.T @ dL_dy
+    dL_dA = x.T @ dL_dy
 
     # ∂L/∂b = sum(dL_dy, axis=0)
     dL_db = np.sum(dL_dy, axis=0)
@@ -419,14 +445,36 @@ for epoch in range(100):
     if epoch % 20 == 0:
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
 
-print("Final A shape:", A.shape)
-print("Final b shape:", b.shape)
+print(f"\nFinal loss: {loss:.4f}")
 ```
 
-**Run**:
-```bash
-python train_matrix.py
+**Output comparison (matching traces)**:
+
+Both use NumPy seeding, float32 everywhere, identical MSE definition, and NumPy gradients scaled by `2/(batch_size*output_dim)`.
+
+PyTorch:
 ```
+Epoch 0, Loss: 4.0978
+Epoch 20, Loss: 2.5171
+Epoch 40, Loss: 1.6226
+Epoch 60, Loss: 1.1016
+Epoch 80, Loss: 0.7871
+
+Final loss: 0.5975
+```
+
+NumPy:
+```
+Epoch 0, Loss: 4.0978
+Epoch 20, Loss: 2.5171
+Epoch 40, Loss: 1.6226
+Epoch 60, Loss: 1.1016
+Epoch 80, Loss: 0.7871
+
+Final loss: 0.5975
+```
+
+They now match epoch-by-epoch because the initialization, dtype, loss definition, and gradient scaling are identical.
 
 ## 6. Detailed Comparison
 
