@@ -52,18 +52,20 @@ y_true_data = np.array([2.0, 4.0, 6.0, 8.0], dtype=np.float32)
 # ============================================================================
 
 # Expected loss values are approximate and depend on random initialization
-# epoch_to_expected_loss = {
-#     0: 41.8765,
-#     20: 5.5432,
-#     40: 0.7654,
-#     60: 0.1123,
-#     80: 0.0198,
-# }
+epoch_to_expected_loss = {
+    0: 18.0074,
+    20: 0.0286,
+    40: 0.0147,
+    60: 0.0130,
+    80: 0.0116,
+}
 
 
 def assert_loss(epoch: int, loss: float) -> None:
-    # Assertion disabled for basic.py due to random initialization
-    pass
+    if epoch in epoch_to_expected_loss:
+        assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, (
+            f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
+        )
 
 
 # ============================================================================
