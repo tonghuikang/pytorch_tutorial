@@ -6,7 +6,7 @@ Two layer neural network
        │                                                           |
        ▼                                                           ▼
 ┌─────────────┐   ┌──────┐         ┌─────────────┐         ┌───────────────┐
-│ x @ W1 + b1 │──→│ ReLU │──→ h ──→│ h @ W2 + b2 │──→ y ──→│ (y, y_true)^2 │──→ L
+│ x @ W1 + b1 │──→│ ReLU │──→ h ──→│ h @ W2 + b2 │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
 └─────────────┘   └──────┘         └─────────────┘         └───────────────┘
        ▲                                  ▲
        │                                  │
@@ -15,13 +15,16 @@ Two layer neural network
 
 Dimensions:
   x:      (batch, input_dim)     e.g., (32, 10)
+  y_true: (batch, output_dim)    e.g., (32, 5)
+
   W1:     (input_dim, hidden)    e.g., (10, 20)
   b1:     (hidden,)              e.g., (20,)
-  h:      (batch, hidden)        e.g., (32, 20)
   W2:     (hidden, output_dim)   e.g., (20, 5)
   b2:     (output_dim,)          e.g., (5,)
+
+  h:      (batch, hidden)        e.g., (32, 20)
   y:      (batch, output_dim)    e.g., (32, 5)
-  y_true: (batch, output_dim)    e.g., (32, 5)
+  loss:   scalar
 """
 
 import torch

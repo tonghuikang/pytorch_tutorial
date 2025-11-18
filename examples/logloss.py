@@ -2,24 +2,27 @@
 Logistic regression with cross-entropy loss for binary classification.
 
 (Untrainable)
-      x                                            y_true
-      │                                               |
-      ▼                                               ▼
-┌───────────┐         ┌─────────┐             ┌───────────────┐
-│ x @ W + b │──→ y ──→│ softmax │──→ probs ──→│ cross_entropy │──→ L
-└───────────┘         └─────────┘             └───────────────┘
+      x                                                  y_true
+      │                                                    |
+      ▼                                                    ▼
+┌───────────┐              ┌─────────┐             ┌───────────────┐
+│ x @ W + b │──→ logits ──→│ softmax │──→ probs ──→│ cross_entropy │──→ L (loss)
+└───────────┘              └─────────┘             └───────────────┘
       ▲
       │
      W,b
 (Trainable)
 
 Dimensions:
-  x:        (batch_size, input_dim)       e.g., (16, 5)
-  W:        (input_dim, num_classes)      e.g., (5, 2)
-  b:        (num_classes,)                e.g., (2,)
-  logits:   (batch_size, num_classes)     e.g., (16, 2)
-  probs:    (batch_size, num_classes)     e.g., (16, 2)
-  y_true:   (batch_size,)                 e.g., (16,)
+  x:      (batch_size, input_dim)   e.g., (16, 5)
+  y_true: (batch_size,)             e.g., (16,)
+
+  W:      (input_dim, num_classes)  e.g., (5, 2)
+  b:      (num_classes,)            e.g., (2,)
+
+  logits: (batch_size, num_classes) e.g., (16, 2)
+  probs:  (batch_size, num_classes) e.g., (16, 2)
+  loss:   scalar
 
 This example demonstrates:
 - Classification vs regression

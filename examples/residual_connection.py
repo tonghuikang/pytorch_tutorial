@@ -12,17 +12,28 @@ Residual networks (ResNets) with skip connections.
     │                                                    ▲                │
     │  Skip Path:                                       │                │
     └──→ [W_skip,b_skip] ──────────────────────────────→┘         ┌──────────────┐
-                                                                   │ MSE Loss: L  │
+                                                                   │ MSE Loss: L  (loss) │
                                                             y ──→  └──────────────┘
 
 Dimensions:
-  x:      (batch, input_dim)     e.g., (8, 16)
-  h1:     (batch, hidden_dim)    e.g., (8, 32)
-  h2:     (batch, hidden_dim)    e.g., (8, 32)
-  y_main: (batch, output_dim)    e.g., (8, 8)
-  y_skip: (batch, output_dim)    e.g., (8, 8)
-  y:      (batch, output_dim)    e.g., (8, 8)
-  y_true: (batch, output_dim)    e.g., (8, 8)
+  x:      (batch, input_dim)  e.g., (8, 16)
+  y_true: (batch, output_dim) e.g., (8, 8)
+
+  W1:     (input_dim, hidden_dim)  e.g., (16, 32)
+  b1:     (hidden_dim,)            e.g., (32,)
+  W2:     (hidden_dim, hidden_dim) e.g., (32, 32)
+  b2:     (hidden_dim,)            e.g., (32,)
+  W3:     (hidden_dim, output_dim) e.g., (32, 8)
+  b3:     (output_dim,)            e.g., (8,)
+  W_skip: (input_dim, output_dim)  e.g., (16, 8)
+  b_skip: (output_dim,)            e.g., (8,)
+
+  h1:     (batch, hidden_dim)  e.g., (8, 32)
+  h2:     (batch, hidden_dim)  e.g., (8, 32)
+  y_main: (batch, output_dim)  e.g., (8, 8)
+  y_skip: (batch, output_dim)  e.g., (8, 8)
+  y:      (batch, output_dim)  e.g., (8, 8)
+  loss:   scalar
 
 Key innovation: Skip connections enable deeper networks by:
 - Providing direct gradient flow paths

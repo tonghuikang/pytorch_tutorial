@@ -2,11 +2,11 @@
 Scaled dot-product attention mechanism.
 
 (Untrainable)
-      X                                                 y_true
+      X                                                 Y_true
       │                                                   |
       ▼                                                   ▼
 ┌───────────────┐            ┌───────────┐         ┌───────────────┐
-│ X @ W_{q,k,v} │──→ Q,K,V──→│ attention │──→ y ──→│ (y, y_true)^2 │──→ L
+│ X @ W_{q,k,v} │──→ Q,K,V──→│ attention │──→ y ──→│ (y, Y_true)^2 │──→ L (loss)
 └───────────────┘            └───────────┘         └───────────────┘
       ▲
       │
@@ -19,11 +19,19 @@ Implementations:
 3. NumPy (manual gradients)
 
 Dimensions:
-  X:  (batch_size, seq_length, d_model)  e.g., (2, 4, 8)
-  Q:  (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
-  K:  (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
-  V:  (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
-  y:  (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
+  X:      (batch_size, seq_length, d_model)  e.g., (2, 4, 8)
+  Y_true: (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
+
+  W_q: (d_model, d_k)  e.g., (8, 4)
+  W_k: (d_model, d_k)  e.g., (8, 4)
+  W_v: (d_model, d_k)  e.g., (8, 4)
+
+  Q:       (batch_size, seq_length, d_k)        e.g., (2, 4, 4)
+  K:       (batch_size, seq_length, d_k)        e.g., (2, 4, 4)
+  V:       (batch_size, seq_length, d_k)        e.g., (2, 4, 4)
+  scores:  (batch_size, seq_length, seq_length) e.g., (2, 4, 4)
+  weights: (batch_size, seq_length, seq_length) e.g., (2, 4, 4)
+  context: (batch_size, seq_length, d_k)        e.g., (2, 4, 4)
 """
 
 import torch
@@ -71,6 +79,7 @@ def assert_loss(epoch: int, loss: float) -> None:
         assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, (
             f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
         )
+
 
 # ============================================================================
 # PyTorch Built-in scaled_dot_product_attention

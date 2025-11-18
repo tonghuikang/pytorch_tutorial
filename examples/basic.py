@@ -6,7 +6,7 @@ Basic scalar linear model: y = Ax + b
       │                       |
       ▼                       ▼
 ┌───────────┐         ┌───────────────┐
-│ A * x + b │──→ y ──→│ (y, y_true)^2 │──→ L
+│ A * x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
 └───────────┘         └───────────────┘
       ▲
       │
@@ -14,11 +14,15 @@ Basic scalar linear model: y = Ax + b
 (Trainable)
 
 Dimensions:
+
   x:      scalar or [batch, 1]
+  y_true: scalar or [batch, 1]
+
   A:      scalar or [1, 1]
   b:      scalar or [1]
-  y:      scalar or [batch, 1]
-  y_true: scalar or [batch, 1]
+
+  y:    scalar or [batch, 1]
+  loss: scalar
 
 This example demonstrates:
 - Simple linear regression

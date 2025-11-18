@@ -6,7 +6,7 @@ Single-layer matrix linear model: y = x @ A + b
       │                       |
       ▼                       ▼
 ┌───────────┐         ┌───────────────┐
-│ A * x + b │──→ y ──→│ (y, y_true)^2 │──→ L
+│ A * x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
 └───────────┘         └───────────────┘
       ▲
       │
@@ -15,10 +15,13 @@ Single-layer matrix linear model: y = x @ A + b
 
 Dimensions:
   x:      (batch_size, input_dim)     e.g., (4, 5)
+  y_true: (batch_size, output_dim)    e.g., (4, 3)
+
   A:      (input_dim, output_dim)     e.g., (5, 3)
   b:      (output_dim,)               e.g., (3,)
+
   y:      (batch_size, output_dim)    e.g., (4, 3)
-  y_true: (batch_size, output_dim)    e.g., (4, 3)
+  loss:   scalar
 
 This example demonstrates:
 - Matrix multiplication and broadcasting
