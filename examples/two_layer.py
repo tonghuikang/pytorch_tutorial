@@ -1,16 +1,6 @@
-
-epoch_to_expected_loss = {
-    0: 118.0829,
-    20: 11.3259,
-    40: 5.2974,
-    60: 3.3069,
-    80: 2.4135,
-}
-def assert_loss(epoch: int, loss: float) -> None:
-    if epoch in epoch_to_expected_loss:
-        assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
-
 """
+Two layer neural network
+
 (Untrainable)
        x                                                         y_true
        │                                                           |
@@ -34,8 +24,11 @@ Dimensions:
   y_true: (batch, output_dim)    e.g., (32, 5)
 """
 
+import torch
+import numpy as np
 
-## Global variables
+# Set seed for reproducibility
+np.random.seed(42)
 
 # Set dimensions
 batch_size = 32
@@ -44,27 +37,60 @@ hidden_dim = 20
 output_dim = 5
 lr = 0.01
 
+# ============================================================================
+# Generate Initial Variables (used by both PyTorch and NumPy)
+# ============================================================================
 
-## PYTORCH ##
+# Initialize parameters
+W1_initial = np.random.randn(input_dim, hidden_dim).astype(np.float32)
+b1_initial = np.random.randn(hidden_dim).astype(np.float32)
+W2_initial = np.random.randn(hidden_dim, output_dim).astype(np.float32)
+b2_initial = np.random.randn(output_dim).astype(np.float32)
 
-import torch
-import numpy as np
+# Generate synthetic data
+x_data = np.random.randn(batch_size, input_dim).astype(np.float32)
+y_true_data = np.random.randn(batch_size, output_dim).astype(np.float32)
 
-# Set seed for reproducibility (use NumPy to match NumPy example)
-np.random.seed(42)
+# ============================================================================
+# Expected Loss Values (for testing)
+# ============================================================================
 
-# Initialize parameters from NumPy (same random initialization)
-W1 = torch.tensor(np.random.randn(input_dim, hidden_dim), dtype=torch.float32, requires_grad=True)
-b1 = torch.tensor(np.random.randn(hidden_dim), dtype=torch.float32, requires_grad=True)
-W2 = torch.tensor(np.random.randn(hidden_dim, output_dim), dtype=torch.float32, requires_grad=True)
-b2 = torch.tensor(np.random.randn(output_dim), dtype=torch.float32, requires_grad=True)
+epoch_to_expected_loss = {
+    0: 118.0829,
+    20: 11.3259,
+    40: 5.2974,
+    60: 3.3069,
+    80: 2.4135,
+}
 
-# Generate synthetic data from NumPy (same random numbers as NumPy example)
-x = torch.tensor(np.random.randn(batch_size, input_dim), dtype=torch.float32)
-y_true = torch.tensor(np.random.randn(batch_size, output_dim), dtype=torch.float32)
+
+def assert_loss(epoch: int, loss: float) -> None:
+    if epoch in epoch_to_expected_loss:
+        assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, (
+            f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
+        )
+
+
+# ============================================================================
+# PyTorch Implementation
+# ============================================================================
+
+# Initialize parameters from initial values
+W1 = torch.tensor(W1_initial.copy(), dtype=torch.float32, requires_grad=True)
+b1 = torch.tensor(b1_initial.copy(), dtype=torch.float32, requires_grad=True)
+W2 = torch.tensor(W2_initial.copy(), dtype=torch.float32, requires_grad=True)
+b2 = torch.tensor(b2_initial.copy(), dtype=torch.float32, requires_grad=True)
+
+# Convert data to tensors
+x = torch.tensor(x_data, dtype=torch.float32)
+y_true = torch.tensor(y_true_data, dtype=torch.float32)
 
 # Create optimizer
 optimizer = torch.optim.SGD([W1, b1, W2, b2], lr=lr)
+
+print("=" * 60)
+print("PyTorch Two-Layer Network with ReLU")
+print("=" * 60)
 
 # Training loop
 for epoch in range(100):
@@ -86,26 +112,30 @@ for epoch in range(100):
     optimizer.zero_grad()
 
     if epoch % 20 == 0:
-        assert_loss(epoch, loss) 
+        assert_loss(epoch, loss.item())
         print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
 
 print(f"\nFinal loss: {loss.item():.4f}")
 
+print()
 
-## NUMPY ##
+# ============================================================================
+# NumPy Implementation
+# ============================================================================
 
-import numpy as np
+# Use the same initial variables as PyTorch
+W1 = W1_initial.copy()
+b1 = b1_initial.copy()
+W2 = W2_initial.copy()
+b2 = b2_initial.copy()
 
-# Initialize parameters (use float32 to match PyTorch)
-np.random.seed(42)
-W1 = np.random.randn(input_dim, hidden_dim).astype(np.float32)
-b1 = np.random.randn(hidden_dim).astype(np.float32)
-W2 = np.random.randn(hidden_dim, output_dim).astype(np.float32)
-b2 = np.random.randn(output_dim).astype(np.float32)
+# Use the same data as PyTorch
+x = x_data.copy()
+y_true = y_true_data.copy()
 
-# Generate synthetic data (use float32 to match PyTorch)
-x = np.random.randn(batch_size, input_dim).astype(np.float32)
-y_true = np.random.randn(batch_size, output_dim).astype(np.float32)
+print("=" * 60)
+print("NumPy Two-Layer Network with ReLU (Manual Backprop)")
+print("=" * 60)
 
 # Training loop
 for epoch in range(100):
@@ -115,7 +145,7 @@ for epoch in range(100):
 
     # Compute loss
     diff = y - y_true
-    loss = np.mean(diff ** 2)
+    loss = np.mean(diff**2)
 
     # ==================== BACKWARD PASS ====================
     # Gradient of loss with respect to predictions
@@ -130,7 +160,7 @@ for epoch in range(100):
     # Why .T? Need to match shapes:
     #   h is (batch, hidden) but we need (hidden, batch) to multiply with dL_dy
     #   dL_dy is (batch, output)
-    #   h.T @ dL_dy: (hidden, batch) @ (batch, output) = (hidden, output) ← matches W2 shape!
+    #   h.T @ dL_dy: (hidden, batch) @ (batch, output) = (hidden, output) matches W2 shape!
     #
     # Intuition: Each weight W2[i,j] affects all batch samples, so we sum contributions
     #            from all samples by doing the matrix multiplication with transposed h
@@ -148,7 +178,7 @@ for epoch in range(100):
     # Why .T? Need to match shapes:
     #   x is (batch, input) but we need (input, batch) to multiply with dL_dh
     #   dL_dh is (batch, hidden)
-    #   x.T @ dL_dh: (input, batch) @ (batch, hidden) = (input, hidden) ← matches W1 shape!
+    #   x.T @ dL_dh: (input, batch) @ (batch, hidden) = (input, hidden) matches W1 shape!
     dL_dW1 = x.T @ dL_dh
     dL_db1 = np.sum(dL_dh, axis=0)
 
@@ -159,7 +189,7 @@ for epoch in range(100):
     b2 -= lr * dL_db2
 
     if epoch % 20 == 0:
-        assert_loss(epoch, loss) 
+        assert_loss(epoch, loss)
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
 
 print(f"\nFinal loss: {loss:.4f}")

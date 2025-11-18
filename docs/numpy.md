@@ -137,6 +137,8 @@ b ← b - lr * (2/n) * Σᵢ (y_i - y_true_i)
 
 **The beauty of PyTorch**: No need to derive or implement gradients manually!
 
+**Run this example**: `python examples/basic.py`
+
 ```python
 import torch
 
@@ -244,6 +246,8 @@ With NumPy, we must:
 2. Derive and implement backward pass manually
 3. Manually update parameters
 
+**Run this example**: `python examples/basic.py`
+
 ### 4.1 Scalar Version (Single Input/Output)
 
 ```python
@@ -312,6 +316,8 @@ Final A: 1.9876, b: 0.0234
 ## 5. One-layer network
 
 Real neural networks use matrices. Let's extend both implementations.
+
+**Run this example**: `python examples/single_layer.py`
 
 ### 5.1 Problem Setup
 
@@ -583,6 +589,8 @@ for epoch in range(100):
 
 ### 8.1 Two-Layer Network
 
+**Run this example**: `python examples/two_layer.py`
+
 **Model**:
 ```
 h = relu(x @ W1 + b1)
@@ -617,33 +625,15 @@ Dimensions:
 Please see examples/two_layer.py
 
 
-**Output comparison (matching traces)**:
 
-Both use NumPy seeding, float32 everywhere, identical MSE definition, and NumPy gradients scaled by `2/(batch_size*output_dim)`.
+**See the examples in action**: All code examples in this document are available as runnable Python files in the `examples/` directory:
+- `examples/basic.py` - Scalar linear model (y = Ax + b)
+- `examples/single_layer.py` - Matrix linear model with batching
+- `examples/two_layer.py` - Two-layer network with ReLU activation
+- `examples/logloss.py` - Classification with cross-entropy loss
+- `examples/attention.py` - Scaled dot-product attention mechanism
+- `examples/residual_connection.py` - ResNets with skip connections
 
-PyTorch:
-```
-Epoch 0, Loss: 118.0829
-Epoch 20, Loss: 11.3259
-Epoch 40, Loss: 5.2974
-Epoch 60, Loss: 3.3069
-Epoch 80, Loss: 2.4135
-
-Final loss: 1.9588
-```
-
-NumPy:
-```
-Epoch 0, Loss: 118.0829
-Epoch 20, Loss: 11.3259
-Epoch 40, Loss: 5.2974
-Epoch 60, Loss: 3.3069
-Epoch 80, Loss: 2.4135
-
-Final loss: 1.9588
-```
-
-They now match epoch-by-epoch because the initialization, dtype, loss definition, and gradient scaling are identical.
 
 ## 9. Why PyTorch's Approach Wins
 
