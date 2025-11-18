@@ -2,12 +2,12 @@
 Logistic regression with cross-entropy loss for binary classification.
 
 (Untrainable)
-      x                                         y_true
-      │                                           |
-      ▼                                           ▼
-┌───────────┐       ┌─────────┐           ┌───────────────┐
-│ x @ W + b │──→y──→│ softmax │──→probs──→│ cross_entropy │──→ L
-└───────────┘       └─────────┘           └───────────────┘
+      x                                            y_true
+      │                                               |
+      ▼                                               ▼
+┌───────────┐         ┌─────────┐             ┌───────────────┐
+│ x @ W + b │──→ y ──→│ softmax │──→ probs ──→│ cross_entropy │──→ L
+└───────────┘         └─────────┘             └───────────────┘
       ▲
       │
      W,b
