@@ -20,43 +20,43 @@ Understanding how to manually implement backpropagation helps demystify what PyT
 We want to learn a simple linear transformation:
 
 ```
-y_pred = Ax + b
+y = Ax + b
 ```
 
 Where:
 - `x`: Input features (shape: `[batch_size, input_dim]`)
 - `A`: Weight matrix (shape: `[output_dim, input_dim]`)
 - `b`: Bias vector (shape: `[output_dim]`)
-- `y_pred`: Predictions (shape: `[batch_size, output_dim]`)
+- `y`: Predictions (shape: `[batch_size, output_dim]`)
 
 **For simplicity**, we'll start with **scalar values** (1D case):
 - `x`: Single input value
 - `A`: Single weight parameter
 - `b`: Single bias parameter
-- `y_pred = A * x + b`: Single prediction
+- `y = A * x + b`: Single prediction
 
 ### 1.2 The Loss Function
 
 We use **Mean Squared Error (MSE)** to measure prediction quality:
 
 ```
-L = (1/n) * Σᵢ (y_pred_i - y_true_i)²
+L = (1/n) * Σᵢ (y_i - y_true_i)²
 ```
 
 For a single sample:
 ```
-L = (y_pred - y_true)²
+L = (y - y_true)²
 ```
 
 This is the graph
 ```
 (Untrainable)
-      x                             y_true
-      │                               |
-      ▼                               ▼
-┌───────────┐              ┌────────────────────┐
-│ A * x + b │──→ y_pred ──→│ (y_pred, y_true)^2 │──→ L
-└───────────┘              └────────────────────┘
+      x                     y_true
+      │                       |
+      ▼                       ▼
+┌───────────┐         ┌───────────────┐
+│ A * x + b │──→ y ──→│ (y, y_true)^2 │──→ L
+└───────────┘         └───────────────┘
       ▲
       │
      A,b
@@ -79,8 +79,8 @@ To implement backpropagation manually in C++, we need to derive the gradients us
 ### 2.1 Forward Pass
 
 ```
-Step 1: y_pred = A * x + b
-Step 2: L = (y_pred - y_true)²
+Step 1: y = A * x + b
+Step 2: L = (y - y_true)²
 ```
 
 ### 2.2 Backward Pass (Chain Rule)
@@ -89,30 +89,30 @@ We need `∂L/∂A` and `∂L/∂b`.
 
 **Gradient of loss with respect to prediction**:
 ```
-∂L/∂y_pred = ∂/∂y_pred [(y_pred - y_true)²]
-           = 2(y_pred - y_true)
+∂L/∂y = ∂/∂y [(y - y_true)²]
+           = 2(y - y_true)
 ```
 
 **Gradient of prediction with respect to A**:
 ```
-∂y_pred/∂A = ∂/∂A [A * x + b]
+∂y/∂A = ∂/∂A [A * x + b]
            = x
 ```
 
 **Gradient of prediction with respect to b**:
 ```
-∂y_pred/∂b = ∂/∂b [A * x + b]
+∂y/∂b = ∂/∂b [A * x + b]
            = 1
 ```
 
 **Apply chain rule**:
 ```
-∂L/∂A = ∂L/∂y_pred * ∂y_pred/∂A
-      = 2(y_pred - y_true) * x
+∂L/∂A = ∂L/∂y * ∂y/∂A
+      = 2(y - y_true) * x
 
-∂L/∂b = ∂L/∂y_pred * ∂y_pred/∂b
-      = 2(y_pred - y_true) * 1
-      = 2(y_pred - y_true)
+∂L/∂b = ∂L/∂y * ∂y/∂b
+      = 2(y - y_true) * 1
+      = 2(y - y_true)
 ```
 
 ### 2.3 For Multiple Samples (Batched)
@@ -120,17 +120,17 @@ We need `∂L/∂A` and `∂L/∂b`.
 With `n` samples, we average gradients:
 
 ```
-∂L/∂A = (1/n) * Σᵢ 2(y_pred_i - y_true_i) * x_i
-      = (2/n) * Σᵢ (y_pred_i - y_true_i) * x_i
+∂L/∂A = (1/n) * Σᵢ 2(y_i - y_true_i) * x_i
+      = (2/n) * Σᵢ (y_i - y_true_i) * x_i
 
-∂L/∂b = (2/n) * Σᵢ (y_pred_i - y_true_i)
+∂L/∂b = (2/n) * Σᵢ (y_i - y_true_i)
 ```
 
 ### 2.4 Update Rule
 
 ```
-A ← A - lr * (2/n) * Σᵢ (y_pred_i - y_true_i) * x_i
-b ← b - lr * (2/n) * Σᵢ (y_pred_i - y_true_i)
+A ← A - lr * (2/n) * Σᵢ (y_i - y_true_i) * x_i
+b ← b - lr * (2/n) * Σᵢ (y_i - y_true_i)
 ```
 
 ## 3. PyTorch Implementation (Automatic Differentiation)
@@ -155,8 +155,8 @@ optimizer = torch.optim.SGD([A, b], lr=lr)
 # Training loop
 for epoch in range(100):
     # Forward pass
-    y_pred = x @ A.t() + b
-    loss = torch.mean((y_pred - y_true) ** 2)
+    y = x @ A.t() + b
+    loss = torch.mean((y - y_true) ** 2)
 
     # Backward pass (automatic!)
     loss.backward()
@@ -176,7 +176,7 @@ for epoch in range(100):
 
 **What PyTorch does automatically**:
 1. **Tracks operations**: Each operation (`@`, `+`, `**`) creates a node in the computational graph
-2. **Builds graph**: `y_pred` and `loss` know how they were created
+2. **Builds graph**: `y` and `loss` know how they were created
 3. **Computes gradients**: `loss.backward()` traverses the graph and applies chain rule
 4. **Accumulates gradients**: Results stored in `A.grad` and `b.grad`
 
@@ -199,7 +199,7 @@ Epoch 80, Loss: 0.0234
 #   A, x ───────┐
 #               ├───→ matmul ───→ result1
 #               │
-#       b ──────┼───────────────→ add ───→ y_pred
+#       b ──────┼───────────────→ add ───→ y
 #               │                  ▲
 #   y_true ─────┼──────────────────┼─────→ sub ───→ diff
 #               │                  │         ▲
@@ -216,7 +216,7 @@ Epoch 80, Loss: 0.0234
 # backward() traverses in reverse:
 loss.backward()
 # 1. MeanBackward: ∂L/∂(squared_diff) = 1/n for each element
-# 2. PowBackward: ∂(x²)/∂x = 2x → computes 2*(y_pred - y_true)
+# 2. PowBackward: ∂(x²)/∂x = 2x → computes 2*(y - y_true)
 # 3. SubBackward: ∂(a-b)/∂a = 1, passes gradient through
 # 4. AddBackward: ∂(a+b)/∂b = 1 → accumulates to b.grad
 # 5. MmBackward: Computes ∂(x@A.T)/∂A → accumulates to A.grad
@@ -263,23 +263,23 @@ n = len(x)
 # Training loop
 for epoch in range(100):
     # ==================== FORWARD PASS ====================
-    y_pred = A * x + b  # Vectorized computation
+    y = A * x + b  # Vectorized computation
 
     # Compute loss
-    diff = y_pred - y_true
+    diff = y - y_true
     loss = np.mean(diff ** 2)
 
     # ==================== BACKWARD PASS ====================
     # We must manually implement the derivatives we derived!
 
-    # ∂L/∂y_pred = (2/n) * (y_pred - y_true)
+    # ∂L/∂y = (2/n) * (y - y_true)
     dL_dy = (2.0 / n) * diff
 
-    # Chain rule: ∂L/∂A = Σ(∂L/∂y_pred * ∂y_pred/∂A)
+    # Chain rule: ∂L/∂A = Σ(∂L/∂y * ∂y/∂A)
     #                    = Σ(dL_dy * x)
     dL_dA = np.sum(dL_dy * x)
 
-    # Chain rule: ∂L/∂b = Σ(∂L/∂y_pred * ∂y_pred/∂b)
+    # Chain rule: ∂L/∂b = Σ(∂L/∂y * ∂y/∂b)
     #                    = Σ(dL_dy * 1)
     dL_db = np.sum(dL_dy)
 
@@ -320,18 +320,18 @@ A: [input_dim, output_dim]
 x: [batch_size, input_dim]
 b: [output_dim]
 
-y_pred = x @ A + b  (broadcasting b across batch)
+y = x @ A + b  (broadcasting b across batch)
 ```
 
 This is the graph
 ```
 (Untrainable)
-      x                             y_true
-      │                               |
-      ▼                               ▼
-┌───────────┐              ┌────────────────────┐
-│ x @ A + b │──→ y_pred ──→│ (y_pred, y_true)^2 │──→ L
-└───────────┘              └────────────────────┘
+      x                     y_true
+      │                       |
+      ▼                       ▼
+┌───────────┐         ┌───────────────┐
+│ x @ A + b │──→ y ──→│ (y, y_true)^2 │──→ L
+└───────────┘         └───────────────┘
       ▲
       │
      A,b
@@ -378,8 +378,8 @@ optimizer = torch.optim.SGD([A, b], lr=lr)
 
 # Training loop (same as before!)
 for epoch in range(100):
-    y_pred = x @ A + b  # [batch_size, output_dim]
-    loss = torch.mean((y_pred - y_true) ** 2)
+    y = x @ A + b  # [batch_size, output_dim]
+    loss = torch.mean((y - y_true) ** 2)
 
     loss.backward()  # Still automatic!
 
@@ -429,16 +429,16 @@ y_true = np.random.randn(batch_size, output_dim).astype(np.float32)
 # Training loop
 for epoch in range(100):
     # ==================== FORWARD PASS ====================
-    # y_pred = x @ A + b (broadcast b)
-    y_pred = x @ A + b  # Shape: [batch_size, output_dim]
+    # y = x @ A + b (broadcast b)
+    y = x @ A + b  # Shape: [batch_size, output_dim]
 
     # Compute loss
-    diff = y_pred - y_true
+    diff = y - y_true
     loss = np.mean(diff ** 2)
 
     # ==================== BACKWARD PASS ====================
     # Match PyTorch autograd when loss is mean over all elements
-    # dL/d(y_pred) = 2 * (y_pred - y_true) / (batch_size * output_dim)
+    # dL/d(y) = 2 * (y - y_true) / (batch_size * output_dim)
     dL_dy = (2.0 / (batch_size * output_dim)) * diff
 
     # ∂L/∂A = x.T @ dL_dy
@@ -546,20 +546,20 @@ They now match epoch-by-epoch because the initialization, dtype, loss definition
 
 ```cpp
 // ❌ WRONG: forgot the 2 in derivative of x²
-double dL_dy = (y_pred - y_true);
+double dL_dy = (y - y_true);
 
 // ✅ CORRECT
-double dL_dy = 2.0 * (y_pred - y_true);
+double dL_dy = 2.0 * (y - y_true);
 ```
 
 ### 7.2 Forgetting to Average Over Batch
 
 ```cpp
 // ❌ WRONG: summing instead of averaging
-double dL_dy = 2.0 * (y_pred[i] - y_true[i]);
+double dL_dy = 2.0 * (y[i] - y_true[i]);
 
 // ✅ CORRECT
-double dL_dy = (2.0 / n) * (y_pred[i] - y_true[i]);
+double dL_dy = (2.0 / n) * (y[i] - y_true[i]);
 ```
 
 ### 7.3 Wrong Matrix Dimensions
@@ -659,8 +659,8 @@ optimizer = torch.optim.SGD([W1, b1, W2, b2], lr=lr)
 for epoch in range(100):
     # Forward pass
     h = torch.relu(x @ W1 + b1)
-    y_pred = h @ W2 + b2
-    loss = torch.mean((y_pred - y_true) ** 2)
+    y = h @ W2 + b2
+    loss = torch.mean((y - y_true) ** 2)
 
     # Backward pass (automatic!)
     loss.backward()
@@ -707,20 +707,20 @@ y_true = np.random.randn(batch_size, output_dim).astype(np.float32)
 for epoch in range(100):
     # ==================== FORWARD PASS ====================
     h = np.maximum(0, x @ W1 + b1)  # ReLU activation
-    y_pred = h @ W2 + b2
+    y = h @ W2 + b2
 
     # Compute loss
-    diff = y_pred - y_true
+    diff = y - y_true
     loss = np.mean(diff ** 2)
 
     # ==================== BACKWARD PASS ====================
     # Gradient of loss with respect to predictions
     # Match PyTorch autograd when loss is mean over all elements
-    # dL/d(y_pred) = 2 * (y_pred - y_true) / (batch_size * output_dim)
+    # dL/d(y) = 2 * (y - y_true) / (batch_size * output_dim)
     dL_dy = (2.0 / (batch_size * output_dim)) * diff
 
     # Gradient through second layer (W2, b2)
-    # Forward: y_pred = h @ W2 + b2  where h is (batch, hidden), W2 is (hidden, output)
+    # Forward: y = h @ W2 + b2  where h is (batch, hidden), W2 is (hidden, output)
     # By chain rule: dL/dW2 = sum over batch of (h[i].T @ dL_dy[i]) for each sample i
     #
     # Why .T? Need to match shapes:
