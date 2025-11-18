@@ -1,28 +1,17 @@
 """
 Scaled dot-product attention mechanism.
 
-         Q, K, V
-            │
-            ▼
-    ┌──────────────────┐
-    │ scores = Q @ K.T │
-    │ / sqrt(d_k)      │
-    └──────────────────┘
-            │
-            ▼
-    ┌──────────────────┐
-    │ weights =        │
-    │ softmax(scores)  │
-    └──────────────────┘
-            │
-            ▼
-    ┌──────────────────┐
-    │ output =         │
-    │ weights @ V      │
-    └──────────────────┘
-            │
-            ▼
-          output
+(Untrainable)
+      X                                   y_true
+      │                                     |
+      ▼                                     ▼
+┌───────────┐       ┌───────────┐       ┌───────────────┐         
+│ attention │──→y──→│ attention │──→y──→│ (y, y_true)^2 │──→ L
+└───────────┘       └───────────────┘       
+      ▲
+      │
+   Wq,Wk,Wv
+(Trainable)
 
 Implementations:
 1. Manual PyTorch (with explicit scores and weights)
@@ -34,7 +23,7 @@ Dimensions:
   Q:  (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
   K:  (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
   V:  (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
-  output: (batch_size, seq_length, d_k)  e.g., (2, 4, 4)
+  y:  (batch_size, seq_length, d_k)      e.g., (2, 4, 4)
 """
 
 import torch
@@ -83,6 +72,40 @@ def assert_loss(epoch: int, loss: float) -> None:
             f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
         )
 
+# ============================================================================
+# PyTorch Built-in scaled_dot_product_attention
+# ============================================================================
+
+W_q = torch.tensor(W_q_initial.copy(), dtype=torch.float32, requires_grad=True)
+W_k = torch.tensor(W_k_initial.copy(), dtype=torch.float32, requires_grad=True)
+W_v = torch.tensor(W_v_initial.copy(), dtype=torch.float32, requires_grad=True)
+
+X = torch.tensor(X_data, dtype=torch.float32)
+Y_true = torch.tensor(Y_true_data, dtype=torch.float32)
+
+optimizer = torch.optim.SGD([W_q, W_k, W_v], lr=lr)
+
+print("=" * 60)
+print("PyTorch Scaled Dot-Product Attention (Built-in)")
+print("=" * 60)
+
+for epoch in range(50):
+    Q = X @ W_q
+    K = X @ W_k
+    V = X @ W_v
+
+    context = torch.nn.functional.scaled_dot_product_attention(Q, K, V)
+    loss = torch.mean((context - Y_true) ** 2)
+
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+
+    if epoch % 10 == 0:
+        assert_loss(epoch, loss.item())
+        print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+
+print()
 
 # ============================================================================
 # PyTorch Manual Implementation
@@ -110,41 +133,6 @@ for epoch in range(50):
     weights = torch.softmax(scores, dim=-1)
     context = weights @ V
 
-    loss = torch.mean((context - Y_true) ** 2)
-
-    loss.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-
-    if epoch % 10 == 0:
-        assert_loss(epoch, loss.item())
-        print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
-
-print()
-
-# ============================================================================
-# PyTorch Built-in scaled_dot_product_attention
-# ============================================================================
-
-W_q = torch.tensor(W_q_initial.copy(), dtype=torch.float32, requires_grad=True)
-W_k = torch.tensor(W_k_initial.copy(), dtype=torch.float32, requires_grad=True)
-W_v = torch.tensor(W_v_initial.copy(), dtype=torch.float32, requires_grad=True)
-
-X = torch.tensor(X_data, dtype=torch.float32)
-Y_true = torch.tensor(Y_true_data, dtype=torch.float32)
-
-optimizer = torch.optim.SGD([W_q, W_k, W_v], lr=lr)
-
-print("=" * 60)
-print("PyTorch Scaled Dot-Product Attention (Built-in)")
-print("=" * 60)
-
-for epoch in range(50):
-    Q = X @ W_q
-    K = X @ W_k
-    V = X @ W_v
-
-    context = torch.nn.functional.scaled_dot_product_attention(Q, K, V)
     loss = torch.mean((context - Y_true) ** 2)
 
     loss.backward()
