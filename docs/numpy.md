@@ -74,7 +74,7 @@ b ← b - learning_rate * ∂L/∂b
 
 ## 2. Mathematical Derivation (By Hand)
 
-To implement backpropagation manually in C++, we need to derive the gradients using calculus.
+To implement backpropagation manually, we derive the gradients using calculus.
 
 ### 2.1 Forward Pass
 
@@ -487,19 +487,7 @@ They now match epoch-by-epoch because the initialization, dtype, loss definition
 
 ## 6. Detailed Comparison
 
-### 6.1 Lines of Code
-
-| Task | PyTorch | NumPy |
-|------|---------|-------|
-| Forward pass | 1 line | 1 line |
-| Loss computation | 1 line | 1 line |
-| Backward pass | 1 line | ~3 lines |
-| Parameter update | 2-4 lines | 2 lines |
-| **Total** | **~5 lines** | **~7 lines** |
-
-**Note**: NumPy is more concise than raw loops, but still requires manual gradient derivation.
-
-### 6.2 What You Must Know
+### 6.1 What You Must Know
 
 | Aspect | PyTorch | NumPy |
 |--------|---------|-------|
@@ -509,7 +497,7 @@ They now match epoch-by-epoch because the initialization, dtype, loss definition
 | **Debugging** | Easy (inspect `.grad`) | Hard (verify math by hand) |
 | **Bugs** | Rare (autograd is tested) | Common (easy to get signs wrong) |
 
-### 6.3 Feature Comparison
+### 6.2 Feature Comparison
 
 | Feature | PyTorch | NumPy |
 |---------|---------|-------|
@@ -524,7 +512,7 @@ They now match epoch-by-epoch because the initialization, dtype, loss definition
 | **Language** | Python | Python |
 | **Learning curve** | ⚠️ Learn PyTorch API | ✅ Just NumPy + calculus |
 
-### 6.4 Performance
+### 6.3 Performance
 
 **CPU (small model)**:
 - PyTorch: ~1.2ms per iteration (includes graph overhead)
@@ -788,12 +776,6 @@ Final loss: 1.9588
 
 They now match epoch-by-epoch because the initialization, dtype, loss definition, and gradient scaling are identical.
 
-**Complexity explosion**:
-- 1 layer: ~3 lines of gradient code
-- 2 layers: ~10 lines
-- 10 layers: ~50+ lines
-- **PyTorch**: Always just `loss.backward()`!
-
 ## 9. Why PyTorch's Approach Wins
 
 ### 9.1 Correctness
@@ -810,7 +792,7 @@ They now match epoch-by-epoch because the initialization, dtype, loss definition
 
 ### 9.2 Productivity
 
-Implementing a new layer in C++ requires:
+Implementing a new layer in NumPy requires:
 1. Derive forward computation
 2. Derive backward computation (calculus)
 3. Implement both carefully
@@ -827,7 +809,7 @@ In PyTorch:
 - Different architectures per batch
 - Easy debugging (standard Python debugger)
 
-**Static C++ code** requires:
+Manual implementations typically require:
 - Recompile for architecture changes
 - Manual handling of control flow
 - Harder debugging
@@ -902,7 +884,7 @@ Despite PyTorch's advantages, NumPy-only implementations are useful for:
 # PyTorch: 1 line
 loss.backward()
 
-# Manual implementation (C++/NumPy without autodiff):
+# Manual implementation (NumPy without autodiff):
 # Requires deriving and implementing every gradient by hand
 # For a 100-layer ResNet: thousands of lines of matrix calculus and chain rule applications
 ```
