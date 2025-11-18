@@ -149,6 +149,9 @@ lr = 0.01
 x = torch.tensor([[1.0], [2.0], [3.0], [4.0]])
 y_true = torch.tensor([[2.0], [4.0], [6.0], [8.0]])
 
+# Create optimizer
+optimizer = torch.optim.SGD([A, b], lr=lr)
+
 # Training loop
 for epoch in range(100):
     # Forward pass
@@ -158,14 +161,14 @@ for epoch in range(100):
     # Backward pass (automatic!)
     loss.backward()
 
-    # Update parameters
-    with torch.no_grad():
-        A -= lr * A.grad
-        b -= lr * b.grad
+    # To inspect gradients, you can check
+    # A.grad, b.grad
 
-        # Zero gradients for next iteration
-        A.grad.zero_()
-        b.grad.zero_()
+    # Update parameters using optimizer
+    optimizer.step()
+
+    # Zero gradients for next iteration
+    optimizer.zero_grad()
 
     if epoch % 20 == 0:
         print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
@@ -370,6 +373,9 @@ lr = 0.01
 x = torch.tensor(np.random.randn(batch_size, input_dim), dtype=torch.float32)
 y_true = torch.tensor(np.random.randn(batch_size, output_dim), dtype=torch.float32)
 
+# Create optimizer
+optimizer = torch.optim.SGD([A, b], lr=lr)
+
 # Training loop (same as before!)
 for epoch in range(100):
     y_pred = x @ A + b  # [batch_size, output_dim]
@@ -377,11 +383,14 @@ for epoch in range(100):
 
     loss.backward()  # Still automatic!
 
-    with torch.no_grad():
-        A -= lr * A.grad
-        b -= lr * b.grad
-        A.grad.zero_()
-        b.grad.zero_()
+    # To inspect gradients, you can check
+    # A.grad, b.grad
+
+    # Update parameters using optimizer
+    optimizer.step()
+
+    # Zero gradients for next iteration
+    optimizer.zero_grad()
 
     if epoch % 20 == 0:
         print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
@@ -533,7 +542,7 @@ They now match epoch-by-epoch because the initialization, dtype, loss definition
 
 ## 7. Common Pitfalls in Manual Gradients
 
-### 7.1 Wrong Sign
+### 7.1 Missing Constant Factor in Derivative
 
 ```cpp
 // ❌ WRONG: forgot the 2 in derivative of x²
@@ -643,6 +652,9 @@ b2 = torch.tensor(np.random.randn(output_dim), dtype=torch.float32, requires_gra
 x = torch.tensor(np.random.randn(batch_size, input_dim), dtype=torch.float32)
 y_true = torch.tensor(np.random.randn(batch_size, output_dim), dtype=torch.float32)
 
+# Create optimizer
+optimizer = torch.optim.SGD([W1, b1, W2, b2], lr=lr)
+
 # Training loop
 for epoch in range(100):
     # Forward pass
@@ -653,18 +665,14 @@ for epoch in range(100):
     # Backward pass (automatic!)
     loss.backward()
 
-    # Update all parameters
-    with torch.no_grad():
-        W1 -= lr * W1.grad
-        b1 -= lr * b1.grad
-        W2 -= lr * W2.grad
-        b2 -= lr * b2.grad
+    # To inspect gradients, you can check
+    # W1.grad, b1.grad, W2.grad, b2.grad
 
-        # Zero gradients
-        W1.grad.zero_()
-        b1.grad.zero_()
-        W2.grad.zero_()
-        b2.grad.zero_()
+    # Update all parameters using optimizer
+    optimizer.step()
+
+    # Zero gradients
+    optimizer.zero_grad()
 
     if epoch % 20 == 0:
         print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
