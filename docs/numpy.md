@@ -20,20 +20,16 @@ Understanding how to manually implement backpropagation helps demystify what PyT
 We want to learn a simple linear transformation:
 
 ```
-y = Ax + b
+y = a * x + b
+L = mean((y - y_true)^2)
 ```
 
 Where:
-- `x`: Input features (shape: `[batch_size, input_dim]`)
-- `A`: Weight matrix (shape: `[output_dim, input_dim]`)
-- `b`: Bias vector (shape: `[output_dim]`)
-- `y`: Predictions (shape: `[batch_size, output_dim]`)
-
-**For simplicity**, we'll start with **scalar values** (1D case):
 - `x`: Single input value
-- `A`: Single weight parameter
+- `a`: Single weight parameter
 - `b`: Single bias parameter
-- `y = A * x + b`: Single prediction
+- `y`: Single prediction
+- `y_true`: Target value
 
 ### 1.2 The Loss Function
 
@@ -45,7 +41,7 @@ L = (1/n) * Σᵢ (y_i - y_true_i)²
 
 For a single sample:
 ```
-L = (y - y_true)²
+L = (y - y_true)^2
 ```
 
 This is the graph
@@ -55,20 +51,20 @@ This is the graph
       │                       |
       ▼                       ▼
 ┌───────────┐         ┌───────────────┐
-│ A * x + b │──→ y ──→│ (y, y_true)^2 │──→ L
+│ a * x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
 └───────────┘         └───────────────┘
       ▲
       │
-     A,b
+     a, b
 (Trainable)
 ```
 
 ### 1.3 The Learning Goal
 
-Find optimal `A` and `b` that minimize `L` using **gradient descent**:
+Find optimal `a` and `b` that minimize `L` using **gradient descent**:
 
 ```
-A ← A - learning_rate * ∂L/∂A
+a ← a - learning_rate * ∂L/∂a
 b ← b - learning_rate * ∂L/∂b
 ```
 
@@ -79,13 +75,13 @@ To implement backpropagation manually, we derive the gradients using calculus.
 ### 2.1 Forward Pass
 
 ```
-Step 1: y = A * x + b
+Step 1: y = a * x + b
 Step 2: L = (y - y_true)²
 ```
 
 ### 2.2 Backward Pass (Chain Rule)
 
-We need `∂L/∂A` and `∂L/∂b`.
+We need `∂L/∂a` and `∂L/∂b`.
 
 **Gradient of loss with respect to prediction**:
 ```
@@ -93,21 +89,21 @@ We need `∂L/∂A` and `∂L/∂b`.
            = 2(y - y_true)
 ```
 
-**Gradient of prediction with respect to A**:
+**Gradient of prediction with respect to a**:
 ```
-∂y/∂A = ∂/∂A [A * x + b]
+∂y/∂a = ∂/∂a [a * x + b]
            = x
 ```
 
 **Gradient of prediction with respect to b**:
 ```
-∂y/∂b = ∂/∂b [A * x + b]
+∂y/∂b = ∂/∂b [a * x + b]
            = 1
 ```
 
 **Apply chain rule**:
 ```
-∂L/∂A = ∂L/∂y * ∂y/∂A
+∂L/∂a = ∂L/∂y * ∂y/∂a
       = 2(y - y_true) * x
 
 ∂L/∂b = ∂L/∂y * ∂y/∂b
@@ -120,7 +116,7 @@ We need `∂L/∂A` and `∂L/∂b`.
 With `n` samples, we average gradients:
 
 ```
-∂L/∂A = (1/n) * Σᵢ 2(y_i - y_true_i) * x_i
+∂L/∂a = (1/n) * Σᵢ 2(y_i - y_true_i) * x_i
       = (2/n) * Σᵢ (y_i - y_true_i) * x_i
 
 ∂L/∂b = (2/n) * Σᵢ (y_i - y_true_i)
@@ -129,7 +125,7 @@ With `n` samples, we average gradients:
 ### 2.4 Update Rule
 
 ```
-A ← A - lr * (2/n) * Σᵢ (y_i - y_true_i) * x_i
+a ← a - lr * (2/n) * Σᵢ (y_i - y_true_i) * x_i
 b ← b - lr * (2/n) * Σᵢ (y_i - y_true_i)
 ```
 
@@ -587,52 +583,163 @@ for epoch in range(100):
 
 ## 8. Examples
 
-### 8.1 Two-Layer Network
-
-**Run this example**: `python examples/two_layer.py`
+### 8.1 Basic scalar linear model
 
 **Model**:
 ```
-h = relu(x @ W1 + b1)
-y = h @ W2 + b2
+y = a * x + b
+L = mean((y - y_true)^2)
 ```
 
 **Architecture**:
 ```
 (Untrainable)
-       x                                                         y_true
-       │                                                           |
-       ▼                                                           ▼
-┌─────────────┐   ┌──────┐         ┌─────────────┐         ┌───────────────┐
-│ x @ W1 + b1 │──→│ ReLU │──→ h ──→│ h @ W2 + b2 │──→ y ──→│ (y, y_true)^2 │──→ L
-└─────────────┘   └──────┘         └─────────────┘         └───────────────┘
-       ▲                                  ▲
-       │                                  │
-     W1,b1                              W2,b2
+      x                     y_true
+      │                       |
+      ▼                       ▼
+┌───────────┐         ┌───────────────┐
+│ a * x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
+└───────────┘         └───────────────┘
+      ▲
+      │
+     a,b
 (Trainable)
-
-Dimensions:
-  x:      (batch, input_dim)     e.g., (32, 10)
-  W1:     (input_dim, hidden)    e.g., (10, 20)
-  b1:     (hidden,)              e.g., (20,)
-  h:      (batch, hidden)        e.g., (32, 20)
-  W2:     (hidden, output_dim)   e.g., (20, 5)
-  b2:     (output_dim,)          e.g., (5,)
-  y:      (batch, output_dim)    e.g., (32, 5)
-  y_true: (batch, output_dim)    e.g., (32, 5)
 ```
 
-Please see examples/two_layer.py
+See the implementation: [examples/basic.py](../examples/basic.py)
 
+### 8.2 One layer neural network
 
+**Model**:
+```
+z = x @ A + b
+y = ReLU(z)
+L = mean((y - y_true)^2)
+```
 
-**See the examples in action**: All code examples in this document are available as runnable Python files in the `examples/` directory:
-- `examples/basic.py` - Scalar linear model (y = Ax + b)
-- `examples/single_layer.py` - Matrix linear model with batching
-- `examples/two_layer.py` - Two-layer network with ReLU activation
-- `examples/logloss.py` - Classification with cross-entropy loss
-- `examples/attention.py` - Scaled dot-product attention mechanism
-- `examples/residual_connection.py` - ResNets with skip connections
+**Architecture**:
+```
+(Untrainable)
+      x                     y_true
+      │                       |
+      ▼                       ▼
+┌───────────┐         ┌───────────────┐
+│ x @ A + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
+└───────────┘         └───────────────┘
+      ▲
+      │
+     A,b
+(Trainable)
+```
+
+See the implementation: [examples/single_layer.py](../examples/single_layer.py)
+
+### 8.3 Two layer neural network, without bias
+
+**Model**:
+```
+z = x @ W1
+h = ReLU(z)
+y = h @ W2
+L = mean(y^2)
+```
+
+**Architecture**:
+```
+(Untrainable)
+    x
+    │
+    ▼
+┌────────┐         ┌──────┐         ┌────────┐         ┌─────┐   ┌──────┐
+│ x @ W1 │──→ z ──→│ ReLU │──→ h ──→│ h @ W2 │──→ y ──→│ y^2 │──→│ mean │──→ L (loss)
+└────────┘         └──────┘         └────────┘         └─────┘   └──────┘
+    ▲                                   ▲
+    │                                   │
+   W1                                  W2
+(Trainable)
+```
+
+See the implementation: [examples/two_layer.py](../examples/two_layer.py)
+
+### 8.4 Logistic regression with cross-entropy loss for binary classification
+
+**Model**:
+```
+logits = x @ W + b
+probs = softmax(logits)
+L = cross_entropy(probs, y_true)
+```
+
+**Architecture**:
+```
+(Untrainable)
+      x                                                  y_true
+      │                                                    |
+      ▼                                                    ▼
+┌───────────┐              ┌─────────┐             ┌───────────────┐
+│ x @ W + b │──→ logits ──→│ softmax │──→ probs ──→│ cross_entropy │──→ L (loss)
+└───────────┘              └─────────┘             └───────────────┘
+      ▲
+      │
+     W,b
+(Trainable)
+```
+
+See the implementation: [examples/logloss.py](../examples/logloss.py)
+
+### 8.5 Residual networks (ResNets) with skip connections
+
+**Model**:
+```
+h = ReLU(x @ W1 + b1) + x
+y = ReLU(h @ W2 + b2) + h
+L = mean((y - y_true)^2)
+```
+
+**Architecture**:
+```
+(Untrainable)
+       x                                                                                        y_true
+       ├────────────────────────┐       ┌────────────────────────────────────┐                    │
+       ▼                        ▼       │                                    ▼                    ▼
+┌─────────────┐   ┌──────┐   ┌─────┐         ┌─────────────┐   ┌──────┐   ┌─────┐         ┌───────────────┐   ┌──────┐
+│ x @ W1 + b1 │──→│ ReLU │──→│ add │──→ h ──→│ h @ W2 + b2 │──→│ ReLU │──→│ add │──→ y ──→│ (y, y_true)^2 │──→│ mean │──→ L (loss)
+└─────────────┘   └──────┘   └─────┘         └─────────────┘   └──────┘   └─────┘         └───────────────┘   └──────┘
+       ▲                                            ▲
+       │                                            │
+     W1,b1                                        W2,b2
+(Trainable)
+```
+
+See the implementation: [examples/residual_connection.py](../examples/residual_connection.py)
+
+### 8.6 Scaled dot-product attention mechanism
+
+**Model**:
+```
+Q = X @ W_q
+K = X @ W_k
+V = X @ W_v
+Y = attention(Q,K,V)
+L = mean((Y - Y_true)^2)
+```
+
+**Architecture**:
+```
+(Untrainable)
+        X                                                Y_true
+        │                                                  |
+        ▼                                                  ▼
+┌───────────────┐             ┌───────────┐         ┌────────────────┐   ┌──────┐
+│ X @ W_{q,k,v} │──→ Q,K,V ──→│ attention │──→ Y ──→│ (y - Y_true)^2 │──→│ mean │──→ L (loss)
+└───────────────┘             └───────────┘         └────────────────┘   └──────┘
+        ▲
+        │
+  W_q, W_k, W_v
+(Trainable)
+```
+
+See the implementation: [examples/attention.py](../examples/attention.py)
 
 
 ## 9. Why PyTorch's Approach Wins
