@@ -21,3 +21,6 @@ Formatting
 - Fix: uv run --frozen ruff check *.py --fix
 - Sort imports: uv run --frozen ruff check --select I *.py --fix
 - Type checking: uv run --frozen mypy *.py
+
+Testing
+- To test the examples, run `./run_examples.sh`

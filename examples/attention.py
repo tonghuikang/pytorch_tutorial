@@ -1,9 +1,9 @@
 """
 Scaled dot-product attention mechanism
 
-Q = W_q @ X
-K = W_k @ X
-V = W_v @ X
+Q = X @ W_q
+K = X @ W_k
+V = X @ W_v
 Y = attention(Q,K,V)
 L = mean((Y - Y_true)^2)
 
@@ -194,25 +194,47 @@ for epoch in range(50):
     diff = context - Y_true
     loss = np.mean(diff**2)
 
-    # please add comments on how this is derived
+    # ==================== BACKWARD PASS ====================
+    # Attention: context = softmax(Q @ K.T / sqrt(d_k)) @ V
+    # Loss: L = mean((context - Y_true)^2)
+    # dL/dcontext = 2(context - Y_true) / (batch_size * seq_length * d_k)
     dL_dcontext = (2.0 / (batch_size * seq_length * d_k)) * diff
 
+    # Backprop through attention output: context = weights @ V
+    # dL/dV = weights.T @ dL/dcontext
+    # weights: [batch, seq, seq], dL/dcontext: [batch, seq, d_k]
+    # weights.T: [batch, seq, seq], result: [batch, seq, d_k]
     dL_dV = weights.transpose(0, 2, 1) @ dL_dcontext
+    # dL/dweights = dL/dcontext @ V.T
     dL_dweights = dL_dcontext @ V.transpose(0, 2, 1)
 
+    # Backprop through softmax: weights = softmax(scores)
+    # For softmax: d/dz[softmax(z)] = diag(softmax) - softmax @ softmax.T
+    # In matrix form: dL/dscores[i,j,k] = weights[i,j,k] * (dL/dweights[i,j,k] - sum_m(weights[i,j,m] * dL/dweights[i,j,m]))
     sum_term = np.sum(weights * dL_dweights, axis=-1, keepdims=True)
     dL_dscores = weights * (dL_dweights - sum_term)
 
+    # Backprop through scaling: scores = Q @ K.T / sqrt(d_k)
     dL_dscores = dL_dscores / math.sqrt(d_k)
 
+    # Backprop through matrix multiplications:
+    # dL/dQ = dL/dscores @ K (chain rule for Q @ K.T)
+    # dL/dK.T = dL/dscores.T @ Q, which is dL/dK = Q.T @ dL/dscores.T = dL/dscores.T @ Q.T
+    # But we compute: dL/dK = dL_dscores.transpose(0,2,1) @ Q (equivalent)
     dL_dQ = dL_dscores @ K
     dL_dK = dL_dscores.transpose(0, 2, 1) @ Q
 
+    # Backprop to weight matrices: Q = X @ W_q (and similarly for K, V)
+    # dL/dW_q = X.T @ dL/dQ (for each batch element, then sum)
+    # We need to accumulate gradients across batch
     dL_dW_q = np.zeros_like(W_q)
     dL_dW_k = np.zeros_like(W_k)
     dL_dW_v = np.zeros_like(W_v)
 
     for i in range(batch_size):
+        # For this batch element: dL/dW_q += X[i].T @ dL/dQ[i]
+        # X[i]: [seq_length, d_model], dL/dQ[i]: [seq_length, d_k]
+        # Result: [d_model, d_k]
         dL_dW_q += X[i].T @ dL_dQ[i]
         dL_dW_k += X[i].T @ dL_dK[i]
         dL_dW_v += X[i].T @ dL_dV[i]

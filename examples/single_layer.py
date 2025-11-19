@@ -1,7 +1,8 @@
 """
-Two layer neural network with residual connection
+One layer neural network
 
-y = A @ x + b
+z = x @ A + b
+y = ReLU(z)
 L = mean((y - y_true)^2)
 
 (Untrainable)
@@ -9,7 +10,7 @@ L = mean((y - y_true)^2)
       │                       |
       ▼                       ▼
 ┌───────────┐         ┌───────────────┐
-│ A @ x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
+│ x @ A + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
 └───────────┘         └───────────────┘
       ▲
       │
@@ -28,8 +29,9 @@ Dimensions:
 
 This example demonstrates:
 - Matrix multiplication and broadcasting
+- Activation functions (ReLU)
 - Batch processing
-- Gradient computation through matrix operations
+- Gradient computation through matrix operations and activation functions
 """
 
 import torch
@@ -61,11 +63,11 @@ y_true_data = np.random.randn(batch_size, output_dim).astype(np.float32)
 # ============================================================================
 
 epoch_to_expected_loss = {
-    0: 4.0978,
-    20: 2.5171,
-    40: 1.6226,
-    60: 1.1016,
-    80: 0.7871,
+    0: 2.8235,
+    20: 1.8644,
+    40: 1.3089,
+    60: 0.9868,
+    80: 0.8215,
 }
 
 
@@ -97,7 +99,8 @@ print("=" * 60)
 
 # Training loop
 for epoch in range(100):
-    y = x @ A + b  # [batch_size, output_dim]
+    z = x @ A + b  # [batch_size, output_dim]
+    y = torch.relu(z)  # Apply ReLU activation
     loss = torch.mean((y - y_true) ** 2)
 
     loss.backward()
@@ -138,23 +141,35 @@ print("=" * 60)
 # Training loop
 for epoch in range(100):
     # ==================== FORWARD PASS ====================
-    # y = x @ A + b (broadcast b)
-    y = x @ A + b  # Shape: [batch_size, output_dim]
+    # z = x @ A + b (broadcast b)
+    z = x @ A + b  # Shape: [batch_size, output_dim]
+    y = np.maximum(0, z)  # Apply ReLU activation
 
     # Compute loss
     diff = y - y_true
     loss = np.mean(diff**2)
 
     # ==================== BACKWARD PASS ====================
-    # Match PyTorch autograd when loss is mean over all elements
-    # dL/d(y) = 2 * (y - y_true) / (batch_size * output_dim)
+    # Loss function: L = mean((y - y_true)^2)
+    # dL/dy = d/dy[mean((y - y_true)^2)] = 2(y - y_true) / (batch_size * output_dim)
+    # Dividing by (batch_size * output_dim) because mean reduces over all elements
     dL_dy = (2.0 / (batch_size * output_dim)) * diff
 
-    # dL/dA = x.T @ dL_dy
-    dL_dA = x.T @ dL_dy
+    # ReLU derivative: d/dz[ReLU(z)] = 1 if z > 0 else 0
+    # Chain rule: dL/dz = dL/dy * dy/dz = dL/dy * (z > 0)
+    dL_dz = dL_dy * (z > 0)
 
-    # dL/db = sum(dL_dy, axis=0)
-    dL_db = np.sum(dL_dy, axis=0)
+    # For linear layer: z = x @ A + b, shape [batch_size, output_dim]
+    # dL/dA = d/dA[L] where each element A[i,j] affects z[:,j] through x[:,i]
+    # By chain rule: dL/dA = x.T @ dL/dz
+    # x has shape [batch_size, input_dim], dL/dz has shape [batch_size, output_dim]
+    # x.T has shape [input_dim, batch_size], so x.T @ dL/dz gives [input_dim, output_dim]
+    dL_dA = x.T @ dL_dz
+
+    # For bias: b[j] adds directly to z[:,j]
+    # dL/db[j] = sum_over_batch(dL/dz[:,j])
+    # Sum over axis=0 (batch dimension) to get [output_dim,]
+    dL_db = np.sum(dL_dz, axis=0)
 
     # ==================== PARAMETER UPDATE ====================
     A -= lr * dL_dA

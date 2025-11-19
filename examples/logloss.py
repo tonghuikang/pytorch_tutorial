@@ -1,7 +1,7 @@
 """
 Logistic regression with cross-entropy loss for binary classification.
 
-logits = W @ x + b
+logits = x @ W + b
 probs = softmax(logits)
 L = cross_entropy(probs, y_true)
 
@@ -10,7 +10,7 @@ L = cross_entropy(probs, y_true)
       │                                                    |
       ▼                                                    ▼
 ┌───────────┐              ┌─────────┐             ┌───────────────┐
-│ W @ x + b │──→ logits ──→│ softmax │──→ probs ──→│ cross_entropy │──→ L (loss)
+│ x @ W + b │──→ logits ──→│ softmax │──→ probs ──→│ cross_entropy │──→ L (loss)
 └───────────┘              └─────────┘             └───────────────┘
       ▲
       │
@@ -161,19 +161,36 @@ for epoch in range(100):
     loss = -np.mean(np.log(probs[np.arange(batch_size), y_true]))
 
     # ==================== BACKWARD PASS ====================
-    # For cross-entropy + softmax, the gradient simplifies to:
-    # dL/dlogits[i, j] = probs[i, j] - y_true_onehot[i, j]
-    # This is one of the most elegant results in deep learning!
+    # Cross-entropy loss with softmax has an elegant gradient:
+    # L = -mean(log(probs[correct_class]))
+    #
+    # Softmax: probs[i,j] = exp(logits[i,j]) / sum_k(exp(logits[i,k]))
+    #
+    # The derivative d/dlogits[i,j] of the cross-entropy+softmax is:
+    # dL/dlogits[i,j] = probs[i,j] - y_true_onehot[i,j]
+    #
+    # Derivation:
+    # 1. dL/dlogits[i,j] = d/dlogits[i,j][-log(probs[i, y_true[i]])]
+    # 2. Apply chain rule: = -(1/probs[i, y_true[i]]) * dprobs[i, y_true[i]]/dlogits[i,j]
+    # 3. For softmax derivative:
+    #    - If j == y_true[i]: dprobs[i,j]/dlogits[i,j] = probs[i,j] * (1 - probs[i,j])
+    #    - If j != y_true[i]: dprobs[i,j]/dlogits[i,j] = -probs[i,j] * probs[i,y_true[i]]
+    # 4. After simplification (canceling terms), both cases give: probs[i,j] - y_true_onehot[i,j]
+    # 5. Dividing by batch_size because loss uses mean
 
-    # Create one-hot encoding
+    # Create one-hot encoding of true labels
     y_true_onehot = np.zeros((batch_size, num_classes))
     y_true_onehot[np.arange(batch_size), y_true] = 1
 
-    # Gradient of loss w.r.t. logits
+    # Gradient of loss w.r.t. logits (the elegant result!)
     dL_dlogits = (probs - y_true_onehot) / batch_size
 
-    # Gradient w.r.t. W and b
+    # Backprop to weights and bias: logits = x @ W + b
+    # dL/dW = x.T @ dL/dlogits
+    # x.T has shape [input_dim, batch], dL/dlogits has shape [batch, num_classes]
+    # Result: [input_dim, num_classes]
     dL_dW = x.T @ dL_dlogits
+    # dL/db: sum gradient over batch dimension
     dL_db = np.sum(dL_dlogits, axis=0)
 
     # ==================== PARAMETER UPDATE ====================
