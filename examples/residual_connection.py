@@ -38,6 +38,7 @@ Key innovation: Skip connections enable deeper networks by:
 
 import torch
 import numpy as np
+from assertion import assert_loss
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -75,16 +76,6 @@ epoch_to_expected_loss = {
     60: 1.7396,
     80: 1.6803,
 }
-
-
-def assert_loss(epoch: int, loss: float) -> None:
-    if epoch in epoch_to_expected_loss:
-        if epoch_to_expected_loss[epoch] == 0:
-            print(f"    {epoch}: {loss:.4f},")
-        else:
-            assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, (
-                f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
-            )
 
 
 # ============================================================================
@@ -125,7 +116,7 @@ for epoch in range(100):
     optimizer.zero_grad()
 
     if epoch % 20 == 0:
-        assert_loss(epoch, loss.item())
+        assert_loss(epoch, loss.item(), epoch_to_expected_loss)
         print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
 
 print()
@@ -216,5 +207,5 @@ for epoch in range(100):
     b2 -= lr * dL_db2
 
     if epoch % 20 == 0:
-        assert_loss(epoch, loss)
+        assert_loss(epoch, loss, epoch_to_expected_loss)
         print(f"Epoch {epoch}, Loss: {loss:.4f}")

@@ -37,6 +37,7 @@ This example demonstrates:
 
 import torch
 import numpy as np
+from assertion import assert_loss
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -70,13 +71,6 @@ epoch_to_expected_loss = {
     60: 0.8411,
     80: 0.7836,
 }
-
-
-def assert_loss(epoch: int, loss: float) -> None:
-    if epoch in epoch_to_expected_loss:
-        assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, (
-            f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
-        )
 
 
 # ============================================================================
@@ -120,7 +114,7 @@ for epoch in range(100):
         # Compute accuracy
         predictions = torch.argmax(logits, dim=1)
         accuracy = torch.mean((predictions == y_true).float()).item()
-        assert_loss(epoch, loss.item())
+        assert_loss(epoch, loss.item(), epoch_to_expected_loss)
         print(f"Epoch {epoch}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}")
 
 print()
@@ -178,8 +172,8 @@ for epoch in range(100):
     # 4. After simplification (canceling terms), both cases give: probs[i,j] - y_true_onehot[i,j]
     # 5. Dividing by batch_size because loss uses mean
 
-    # Create one-hot encoding of true labels
-    y_true_onehot = np.zeros((batch_size, num_classes))
+    # Create one-hot encoding of true labels (with explicit float32 dtype)
+    y_true_onehot = np.zeros((batch_size, num_classes), dtype=np.float32)
     y_true_onehot[np.arange(batch_size), y_true] = 1
 
     # Gradient of loss w.r.t. logits (the elegant result!)
@@ -201,5 +195,5 @@ for epoch in range(100):
         # Compute accuracy
         predictions = np.argmax(probs, axis=1)
         accuracy = np.mean(predictions == y_true)
-        assert_loss(epoch, loss)
+        assert_loss(epoch, loss, epoch_to_expected_loss)
         print(f"Epoch {epoch}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}")

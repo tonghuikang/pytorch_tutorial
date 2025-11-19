@@ -35,6 +35,7 @@ This example demonstrates:
 
 import torch
 import numpy as np
+from assertion import assert_loss
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -68,13 +69,6 @@ epoch_to_expected_loss = {
 }
 
 
-def assert_loss(epoch: int, loss: float) -> None:
-    if epoch in epoch_to_expected_loss:
-        assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, (
-            f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
-        )
-
-
 # ============================================================================
 # PyTorch Implementation
 # ============================================================================
@@ -83,9 +77,9 @@ def assert_loss(epoch: int, loss: float) -> None:
 A = torch.tensor([[A_initial]], dtype=torch.float32, requires_grad=True)
 b = torch.tensor([b_initial], dtype=torch.float32, requires_grad=True)
 
-# Convert data to tensors
-x = torch.tensor([[1.0], [2.0], [3.0], [4.0]], dtype=torch.float32)
-y_true = torch.tensor([[2.0], [4.0], [6.0], [8.0]], dtype=torch.float32)
+# Convert shared data to tensors
+x = torch.tensor(x_data.reshape(-1, 1), dtype=torch.float32)
+y_true = torch.tensor(y_true_data.reshape(-1, 1), dtype=torch.float32)
 
 # Create optimizer
 optimizer = torch.optim.SGD([A, b], lr=lr)
@@ -113,7 +107,7 @@ for epoch in range(100):
     optimizer.zero_grad()
 
     if epoch % 20 == 0:
-        assert_loss(epoch, loss.item())
+        assert_loss(epoch, loss.item(), epoch_to_expected_loss)
         print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
 
 print(f"\nFinal loss: {loss.item():.4f}")
@@ -165,7 +159,7 @@ for epoch in range(100):
     b -= lr * dL_db
 
     if epoch % 20 == 0:
-        assert_loss(epoch, loss)
+        assert_loss(epoch, loss, epoch_to_expected_loss)
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
 
 print(f"Final A: {A:.4f}, b: {b:.4f}")

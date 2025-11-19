@@ -12,12 +12,12 @@ L = mean(y^2)
     x
     │
     ▼
-┌────────┐       ┌──────┐         ┌────────┐         ┌─────┐   ┌──────┐
-│ x @ W1 │──→z──→│ ReLU │──→ h ──→│ h @ W2 │──→ y ──→│ y^2 │──→│ mean │──→ L (loss)
-└────────┘       └──────┘         └────────┘         └─────┘   └──────┘
-    ▲                                 ▲
-    │                                 │
-   W1                                W2
+┌────────┐         ┌──────┐         ┌────────┐         ┌─────┐   ┌──────┐
+│ x @ W1 │──→ z ──→│ ReLU │──→ h ──→│ h @ W2 │──→ y ──→│ y^2 │──→│ mean │──→ L (loss)
+└────────┘         └──────┘         └────────┘         └─────┘   └──────┘
+    ▲                                   ▲
+    │                                   │
+   W1                                  W2
 (Trainable)
 
 Dimensions:
@@ -34,6 +34,7 @@ Dimensions:
 
 import torch
 import numpy as np
+from assertion import assert_loss
 
 # Set seed for reproducibility
 np.random.seed(42)
@@ -68,13 +69,6 @@ epoch_to_expected_loss = {
     60: 3.2457,
     80: 2.3180,
 }
-
-
-def assert_loss(epoch: int, loss: float) -> None:
-    if epoch in epoch_to_expected_loss:
-        assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, (
-            f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"
-        )
 
 
 # ============================================================================
@@ -117,7 +111,7 @@ for epoch in range(100):
     optimizer.zero_grad()
 
     if epoch % 20 == 0:
-        assert_loss(epoch, loss.item())
+        assert_loss(epoch, loss.item(), epoch_to_expected_loss)
         print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
 
 print(f"\nFinal loss: {loss.item():.4f}")
@@ -177,7 +171,7 @@ for epoch in range(100):
     W2 -= lr * dL_dW2
 
     if epoch % 20 == 0:
-        assert_loss(epoch, loss)
+        assert_loss(epoch, loss, epoch_to_expected_loss)
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
 
 print(f"\nFinal loss: {loss:.4f}")
