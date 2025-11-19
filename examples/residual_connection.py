@@ -1,20 +1,24 @@
 """
 Residual networks (ResNets) with skip connections.
 
-h = ReLU(x @ W1 + b1) + x
-y = ReLU(h @ W2 + b2) + h
+a1 = x @ W1 + b1
+z1 = ReLU(a1)
+h = z1 + x
+a2 = h @ W2 + b2
+z2 = ReLU(a2)
+y = z2 + h
 L = mean((y - y_true)^2)
 
 (Untrainable)
-       x                                                                                        y_true
-       ├────────────────────────┐       ┌────────────────────────────────────┐                    │
-       ▼                        ▼       │                                    ▼                    ▼
-┌─────────────┐   ┌──────┐   ┌─────┐         ┌─────────────┐   ┌──────┐   ┌─────┐         ┌───────────────┐   ┌──────┐
-│ x @ W1 + b1 │──→│ ReLU │──→│ add │──→ h ──→│ h @ W2 + b2 │──→│ ReLU │──→│ add │──→ y ──→│ (y, y_true)^2 │──→│ mean │──→ L (loss)
-└─────────────┘   └──────┘   └─────┘         └─────────────┘   └──────┘   └─────┘         └───────────────┘   └──────┘
-       ▲                                            ▲
-       │                                            │
-     W1,b1                                        W2,b2
+       x                                                                                                                          y_true
+       ├────────────────────────────────────────┐        ┌─────────────────────────────────────────────────────────────┐            │
+       ▼                                        ▼        │                                                             ▼            ▼
+┌─────────────┐          ┌──────┐          ┌────────┐         ┌─────────────┐          ┌──────┐          ┌────────┐         ┌───────────────┐   ┌──────┐
+│ x @ W1 + b1 │──→ a1 ──→│ ReLU │──→ z1 ──→│ z1 + x │──→ h ──→│ h @ W2 + b2 │──→ a2 ──→│ ReLU │──→ z2 ──→│ z2 + h │──→ y ──→│ (y, y_true)^2 │──→│ mean │──→ L (loss)
+└─────────────┘          └──────┘          └────────┘         └─────────────┘          └──────┘          └────────┘         └───────────────┘   └──────┘
+       ▲                                                             ▲
+       │                                                             │
+     W1,b1                                                         W2,b2
 (Trainable)
 
 Dimensions:
@@ -99,15 +103,19 @@ print("PyTorch Residual Network (with Skip Connections)")
 print("=" * 60)
 
 for epoch in range(100):
-    # h = ReLU(x @ W1 + b1) + x
-    z1 = x @ W1 + b1  # [batch_size, hidden_dim]
-    h_relu = torch.relu(z1)
-    h = h_relu + x  # [batch_size, hidden_dim] (residual connection)
+    # a1 = x @ W1 + b1
+    a1 = x @ W1 + b1  # [batch_size, hidden_dim]
+    # z1 = ReLU(a1)
+    z1 = torch.relu(a1)  # [batch_size, hidden_dim]
+    # h = z1 + x
+    h = z1 + x  # [batch_size, hidden_dim] (residual connection)
 
-    # y = ReLU(h @ W2 + b2) + h
-    z2 = h @ W2 + b2  # [batch_size, hidden_dim]
-    y_relu = torch.relu(z2)
-    y = y_relu + h  # [batch_size, hidden_dim] (residual connection)
+    # a2 = h @ W2 + b2
+    a2 = h @ W2 + b2  # [batch_size, hidden_dim]
+    # z2 = ReLU(a2)
+    z2 = torch.relu(a2)  # [batch_size, hidden_dim]
+    # y = z2 + h
+    y = z2 + h  # [batch_size, hidden_dim] (residual connection)
 
     loss = torch.mean((y - y_true) ** 2)
 
@@ -140,15 +148,19 @@ print("=" * 60)
 
 for epoch in range(100):
     # ==================== FORWARD PASS ====================
-    # h = ReLU(x @ W1 + b1) + x
-    z1 = x @ W1 + b1  # [batch_size, hidden_dim]
-    h_relu = np.maximum(0, z1)
-    h = h_relu + x  # [batch_size, hidden_dim] (residual connection)
+    # a1 = x @ W1 + b1
+    a1 = x @ W1 + b1  # [batch_size, hidden_dim]
+    # z1 = ReLU(a1)
+    z1 = np.maximum(0, a1)  # [batch_size, hidden_dim]
+    # h = z1 + x
+    h = z1 + x  # [batch_size, hidden_dim] (residual connection)
 
-    # y = ReLU(h @ W2 + b2) + h
-    z2 = h @ W2 + b2  # [batch_size, hidden_dim]
-    y_relu = np.maximum(0, z2)
-    y = y_relu + h  # [batch_size, hidden_dim] (residual connection)
+    # a2 = h @ W2 + b2
+    a2 = h @ W2 + b2  # [batch_size, hidden_dim]
+    # z2 = ReLU(a2)
+    z2 = np.maximum(0, a2)  # [batch_size, hidden_dim]
+    # y = z2 + h
+    y = z2 + h  # [batch_size, hidden_dim] (residual connection)
 
     diff = y - y_true
     loss = np.mean(diff**2)
@@ -158,43 +170,43 @@ for epoch in range(100):
     # dL/dy = 2(y - y_true) / (batch_size * hidden_dim)
     dL_dy = (2.0 / (batch_size * hidden_dim)) * diff
 
-    # Backward through second addition: y = y_relu + h
-    # Both paths y_relu and h receive gradient dL/dy
-    dL_dy_relu_2 = dL_dy  # gradient for ReLU output
+    # Backward through second addition: y = z2 + h
+    # Both paths z2 and h receive gradient dL/dy
+    dL_dz2 = dL_dy  # gradient for z2 (already post-ReLU)
     dL_dh_direct_2 = dL_dy  # gradient for direct h from residual connection
 
-    # Backward through second ReLU: y_relu = ReLU(z2)
-    # ReLU gradient: d/dz2[ReLU(z2)] = 1 if z2 > 0 else 0
-    dL_dz2 = dL_dy_relu_2 * (z2 > 0)
+    # Backward through second ReLU: z2 = ReLU(a2)
+    # ReLU gradient: d/da2[ReLU(a2)] = 1 if a2 > 0 else 0
+    dL_da2 = dL_dz2 * (a2 > 0)  # apply ReLU mask
 
-    # Backward through second linear layer: z2 = h @ W2 + b2
-    # dL/dW2 = h.T @ dL/dz2: [hidden_dim, batch] @ [batch, hidden_dim] = [hidden_dim, hidden_dim]
-    dL_dW2 = h.T @ dL_dz2
+    # Backward through second linear layer: a2 = h @ W2 + b2
+    # dL/dW2 = h.T @ dL/da2: [hidden_dim, batch] @ [batch, hidden_dim] = [hidden_dim, hidden_dim]
+    dL_dW2 = h.T @ dL_da2
     # dL/db2: sum gradient over batch dimension
-    dL_db2 = np.sum(dL_dz2, axis=0)
-    # Gradient flowing back to h from W2: dL/dh_from_W2 = dL/dz2 @ W2.T
-    dL_dh_from_W2 = dL_dz2 @ W2.T
+    dL_db2 = np.sum(dL_da2, axis=0)
+    # Gradient flowing back to h from W2: dL/dh_from_W2 = dL/da2 @ W2.T
+    dL_dh_from_W2 = dL_da2 @ W2.T
 
     # Combine gradients at h from both paths:
     # h receives gradient from: (1) W2 backward pass, (2) direct residual from y
     dL_dh = dL_dh_from_W2 + dL_dh_direct_2
 
-    # Backward through first addition: h = h_relu + x
-    # Both paths h_relu and x receive gradient dL_dh
-    dL_dh_relu_1 = dL_dh  # gradient for ReLU output
+    # Backward through first addition: h = z1 + x
+    # Both paths z1 and x receive gradient dL_dh
+    dL_dz1 = dL_dh  # gradient for z1 (already post-ReLU)
     dL_dx_direct_1 = dL_dh  # gradient for direct x from residual connection
 
-    # Backward through first ReLU: h_relu = ReLU(z1)
-    # ReLU gradient: d/dz1[ReLU(z1)] = 1 if z1 > 0 else 0
-    dL_dz1 = dL_dh_relu_1 * (z1 > 0)
+    # Backward through first ReLU: z1 = ReLU(a1)
+    # ReLU gradient: d/da1[ReLU(a1)] = 1 if a1 > 0 else 0
+    dL_da1 = dL_dz1 * (a1 > 0)  # apply ReLU mask
 
-    # Backward through first linear layer: z1 = x @ W1 + b1
-    # dL/dW1 = x.T @ dL/dz1: [input_dim, batch] @ [batch, hidden_dim] = [input_dim, hidden_dim]
-    dL_dW1 = x.T @ dL_dz1
+    # Backward through first linear layer: a1 = x @ W1 + b1
+    # dL/dW1 = x.T @ dL/da1: [input_dim, batch] @ [batch, hidden_dim] = [input_dim, hidden_dim]
+    dL_dW1 = x.T @ dL_da1
     # dL/db1: sum gradient over batch dimension
-    dL_db1 = np.sum(dL_dz1, axis=0)
-    # Gradient flowing back to x from W1: dL/dx_from_W1 = dL/dz1 @ W1.T
-    dL_dx_from_W1 = dL_dz1 @ W1.T
+    dL_db1 = np.sum(dL_da1, axis=0)
+    # Gradient flowing back to x from W1: dL/dx_from_W1 = dL/da1 @ W1.T
+    dL_dx_from_W1 = dL_da1 @ W1.T
 
     # Combine gradients at x from both paths:
     # x receives gradient from: (1) W1 backward pass, (2) direct residual from h
