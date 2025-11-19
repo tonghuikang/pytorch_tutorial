@@ -1,16 +1,22 @@
 """
-Scaled dot-product attention mechanism.
+Scaled dot-product attention mechanism
+
+Q = W_q @ X
+K = W_k @ X
+V = W_v @ X
+Y = attention(Q,K,V)
+L = mean((Y - Y_true)^2)
 
 (Untrainable)
-      X                                                 Y_true
-      │                                                   |
-      ▼                                                   ▼
-┌───────────────┐            ┌───────────┐         ┌───────────────┐
-│ X @ W_{q,k,v} │──→ Q,K,V──→│ attention │──→ y ──→│ (y, Y_true)^2 │──→ L (loss)
-└───────────────┘            └───────────┘         └───────────────┘
-      ▲
-      │
-   Wq,Wk,Wv
+        X                                                Y_true
+        │                                                  |
+        ▼                                                  ▼
+┌───────────────┐            ┌───────────┐         ┌────────────────┐   ┌──────┐
+│ X @ W_{q,k,v} │──→ Q,K,V──→│ attention │──→ Y ──→│ (y - Y_true)^2 │──→│ mean │──→ L (loss)
+└───────────────┘            └───────────┘         └────────────────┘   └──────┘
+        ▲
+        │
+  W_q, W_k, W_v
 (Trainable)
 
 Implementations:
@@ -188,6 +194,7 @@ for epoch in range(50):
     diff = context - Y_true
     loss = np.mean(diff**2)
 
+    # please add comments on how this is derived
     dL_dcontext = (2.0 / (batch_size * seq_length * d_k)) * diff
 
     dL_dV = weights.transpose(0, 2, 1) @ dL_dcontext

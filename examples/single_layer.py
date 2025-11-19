@@ -1,12 +1,15 @@
 """
-Single-layer matrix linear model: y = x @ A + b
+Two layer neural network with residual connection
+
+y = A @ x + b
+L = mean((y - y_true)^2)
 
 (Untrainable)
       x                     y_true
       │                       |
       ▼                       ▼
 ┌───────────┐         ┌───────────────┐
-│ A * x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
+│ A @ x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
 └───────────┘         └───────────────┘
       ▲
       │

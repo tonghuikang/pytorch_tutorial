@@ -1,16 +1,19 @@
 """
-Basic scalar linear model: y = Ax + b
+Basic scalar linear model
+
+y = a * x + b
+L = mean((y - y_true)^2)
 
 (Untrainable)
       x                     y_true
       │                       |
       ▼                       ▼
 ┌───────────┐         ┌───────────────┐
-│ A * x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
+│ a * x + b │──→ y ──→│ (y, y_true)^2 │──→ L (loss)
 └───────────┘         └───────────────┘
       ▲
       │
-     A,b
+     a,b
 (Trainable)
 
 Dimensions:
@@ -18,7 +21,7 @@ Dimensions:
   x:      scalar or [batch, 1]
   y_true: scalar or [batch, 1]
 
-  A:      scalar or [1, 1]
+  a:      scalar or [1]
   b:      scalar or [1]
 
   y:    scalar or [batch, 1]

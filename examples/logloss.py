@@ -1,12 +1,16 @@
 """
 Logistic regression with cross-entropy loss for binary classification.
 
+logits = W @ x + b
+probs = softmax(logits)
+L = cross_entropy(probs, y_true)
+
 (Untrainable)
       x                                                  y_true
       │                                                    |
       ▼                                                    ▼
 ┌───────────┐              ┌─────────┐             ┌───────────────┐
-│ x @ W + b │──→ logits ──→│ softmax │──→ probs ──→│ cross_entropy │──→ L (loss)
+│ W @ x + b │──→ logits ──→│ softmax │──→ probs ──→│ cross_entropy │──→ L (loss)
 └───────────┘              └─────────┘             └───────────────┘
       ▲
       │
