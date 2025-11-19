@@ -21,7 +21,7 @@ def assert_loss(
     """
     if epoch in epoch_to_expected_loss:
         if skip_to_print_loss:
-            print(f"    {epoch}: {loss:.4f},")
+            print(f"    {epoch}: {loss:.6f},")
             return
         assert abs(loss - epoch_to_expected_loss[epoch]) < 0.001, (
             f"Epoch {epoch}: expected {epoch_to_expected_loss[epoch]}, got {loss}"

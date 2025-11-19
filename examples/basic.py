@@ -61,11 +61,11 @@ y_true_data = np.array([2.0, 4.0, 6.0, 8.0], dtype=np.float32)
 
 # Expected loss values are approximate and depend on random initialization
 epoch_to_expected_loss = {
-    0: 18.0074,
-    20: 0.0286,
-    40: 0.0147,
-    60: 0.0130,
-    80: 0.0116,
+    0: 18.007383,
+    20: 0.028602,
+    40: 0.014697,
+    60: 0.013029,
+    80: 0.011556,
 }
 
 
